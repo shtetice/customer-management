@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QComboBox, QMessageBox, QAbstractItemView
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtGui import QColor, QFont, QBrush
 
 from database.models import CustomerStatus
 from controllers.customer_controller import customer_controller
@@ -185,8 +185,9 @@ class CustomerListScreen(QWidget):
             self.table.setRowHeight(row_idx, 44)
 
     def _cell(self, text: str) -> QTableWidgetItem:
-        item = QTableWidgetItem(text)
+        item = QTableWidgetItem(text or "")
         item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        item.setForeground(QBrush(QColor("#2c3e50")))
         return item
 
     def _confirm_delete(self, customer_id: int):

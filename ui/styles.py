@@ -95,6 +95,17 @@ QTableWidget {
 QTableWidget::item {
     padding: 6px 10px;
     text-align: right;
+    color: #2c3e50;
+    background-color: white;
+}
+
+QTableWidget::item:alternate {
+    background-color: #f9f9f9;
+}
+
+QTableWidget::item:selected {
+    background-color: #d6eaf8;
+    color: #2c3e50;
 }
 
 QHeaderView::section {
