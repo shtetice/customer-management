@@ -1,8 +1,9 @@
+from datetime import date
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QComboBox, QTextEdit, QMessageBox, QScrollArea, QFrame
+    QPushButton, QComboBox, QTextEdit, QMessageBox, QScrollArea, QFrame, QDateEdit
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QDate, pyqtSignal
 from PyQt6.QtGui import QFont
 
 from database.models import CustomerStatus, Gender
@@ -221,6 +222,38 @@ class AddCustomerScreen(QWidget):
 
         form_layout.addLayout(row3)
 
+        # Row 4: כתובת + תאריך לידה side by side
+        row4 = QHBoxLayout()
+        row4.setSpacing(16)
+
+        address_col = QVBoxLayout()
+        address_col.setSpacing(4)
+        address_col.addWidget(self._label("כתובת"))
+        self.address_input = QLineEdit()
+        self.address_input.setPlaceholderText("רחוב, עיר")
+        self.address_input.setMinimumHeight(36)
+        self.address_input.setStyleSheet(FIELD_STYLE)
+        address_col.addWidget(self.address_input)
+        row4.addLayout(address_col)
+
+        dob_col = QVBoxLayout()
+        dob_col.setSpacing(4)
+        dob_col.addWidget(self._label("תאריך לידה"))
+        self.dob_input = QDateEdit()
+        self.dob_input.setCalendarPopup(True)
+        self.dob_input.setDisplayFormat("dd/MM/yyyy")
+        self.dob_input.setMinimumHeight(36)
+        self.dob_input.setSpecialValueText("לא צוין")
+        self.dob_input.setMinimumDate(QDate(1900, 1, 1))
+        self.dob_input.setDate(QDate(1900, 1, 1))   # default = "לא צוין"
+        self.dob_input.setStyleSheet(FIELD_STYLE + """
+            QDateEdit::drop-down { border: none; width: 24px; }
+        """)
+        dob_col.addWidget(self.dob_input)
+        row4.addLayout(dob_col)
+
+        form_layout.addLayout(row4)
+
         # Notes (full width)
         notes_col = QVBoxLayout()
         notes_col.setSpacing(4)
@@ -317,6 +350,13 @@ class AddCustomerScreen(QWidget):
                 self._add_phone_field()
                 self.phone_inputs[-1].setText(extra)
         self.email_input.setText(customer.email or "")
+        self.address_input.setText(customer.address or "")
+        if customer.date_of_birth:
+            self.dob_input.setDate(QDate(
+                customer.date_of_birth.year,
+                customer.date_of_birth.month,
+                customer.date_of_birth.day,
+            ))
         self.notes_input.setPlainText(customer.notes or "")
 
         for i in range(self.gender_combo.count()):
@@ -340,16 +380,21 @@ class AddCustomerScreen(QWidget):
         gender = self.gender_combo.currentData()
         status = self.status_combo.currentData()
         notes = self.notes_input.toPlainText().strip()
+        address = self.address_input.text().strip()
+        qdate = self.dob_input.date()
+        dob = date(qdate.year(), qdate.month(), qdate.day()) if qdate != QDate(1900, 1, 1) else None
 
         try:
             if self._customer_id:
                 customer_controller.update(
                     self._customer_id, name, surname, gender,
-                    phone, phone2, phone3, email, status, notes
+                    phone, phone2, phone3, email, status, notes,
+                    address=address, date_of_birth=dob
                 )
             else:
                 customer_controller.create(
-                    name, surname, gender, phone, phone2, phone3, email, status, notes
+                    name, surname, gender, phone, phone2, phone3, email, status, notes,
+                    address=address, date_of_birth=dob
                 )
 
             self.error_label.setText("")
