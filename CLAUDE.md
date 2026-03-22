@@ -36,11 +36,13 @@ customer_management/
 | name | String |
 | surname | String |
 | gender | Enum (male/female/other) |
-| phone | String |
+| phone / phone2 / phone3 | String |
 | email | String |
+| address | String(300) |
+| date_of_birth | Date |
 | status | Enum (lead/customer/retention/vip) |
-| treatment_history | Relationship → TreatmentHistory |
 | notes | Text |
+| treatments | Relationship → Treatment |
 | receipts | Relationship → Receipt |
 | files | Relationship → CustomerFile |
 | created_at | DateTime |
@@ -51,15 +53,20 @@ customer_management/
 - **User** — access controlled per-feature by Manager via Settings
 
 ## Features Planned
-- [ ] Customer list & management (Leads, Customers, Retention, VIP)
-- [ ] Add / Edit / Delete customer
-- [ ] Treatment history
-- [ ] Notes
-- [ ] Receipts
-- [ ] File attachments (PDF, DOCX, CSV)
-- [ ] User authentication (login/logout)
-- [ ] User management (Manager creates/manages users)
-- [ ] Role-based permissions (Manager configures per-feature access)
+- [x] SQLAlchemy models (Customer, User, Feature, UserPermission, Treatment, Receipt, CustomerFile)
+- [x] Database migration system (adds new columns to existing DBs without data loss)
+- [x] Customer list screen (filterable by status: Lead/Customer/Retention/VIP)
+- [x] Add / Edit / Delete customer (with name, surname, phones ×3, email, gender, status, address, DOB, notes)
+- [x] Custom date picker widget (LTR calendar popup with month+year dropdowns, RTL-safe)
+- [x] Main window with sidebar navigation
+- [x] Login screen
+- [x] Customer detail screen
+- [x] Treatment history screen
+- [x] Add receipt screen
+- [x] Role-based permission model (Feature + UserPermission tables seeded)
+- [ ] User authentication (login/logout — UI exists, backend not wired up)
+- [ ] User management screen (Manager creates/manages users)
+- [ ] Role-based permissions UI (Manager configures per-feature access)
 - [ ] Backup / Export
 - [ ] Compile to Windows .exe
 
@@ -83,10 +90,36 @@ If the user says anything like "we're done for today", "let's stop here", "that'
 *Updated at the end of each working session.*
 
 **Last session:** 2026-03-22
-**Status:** Project initialized. Tech stack decided. Starting with Customer model and Add/List customer UI.
+
+**Completed today:**
+- Added `address` (String 300) and `date_of_birth` (Date) fields to `Customer` model (`database/models.py`)
+- Extended `db._migrate()` to ADD COLUMN for both new fields on existing databases (`database/db.py`)
+- Updated `CustomerController.create()` and `.update()` to accept and persist the new fields (`controllers/customer_controller.py`)
+- Built `_DatePickerButton` custom calendar popup in `ui/screens/add_customer_screen.py`:
+  - Fully LTR-forced to avoid RTL corruption in Hebrew layout
+  - Custom nav bar: month dropdown + year dropdown (1920–today) + ◀▶ buttons
+  - Built-in calendar hidden nav, max date = today, default = 30 years ago
+  - Popup positioned at button's bottom-left edge
+- Added address + DOB fields to the Add/Edit Customer form (row 4, side by side)
+
+**Key files:**
+- `ui/screens/add_customer_screen.py` — `_DatePickerButton` (line 75), form (line 241)
+- `database/models.py` — Customer model (line 34)
+- `database/db.py` — migration (line 18)
+- `controllers/customer_controller.py` — create/update (line 52, 90)
+
 **Next steps:**
-1. Set up project folder structure and virtual environment
-2. Create SQLAlchemy database models (Customer, User, Role, Permissions)
-3. Build the main window with navigation
-4. Build the Customer List screen (filterable by status)
-5. Build the Add New Customer screen
+1. Add tests for `address` and `date_of_birth` in `tests/test_customer_controller.py`
+2. Wire up authentication — login screen exists (`ui/screens/login_screen.py`) but auth backend not connected
+3. Build User Management screen (Manager creates/edits users)
+4. Build Permissions UI (Manager toggles feature access per user)
+5. Fix `__import__("sqlalchemy")` in `db.py:32` — import `text` from sqlalchemy at top of file
+
+**Open questions / blockers:**
+- Calendar popup may render off-screen if DOB field is near the bottom of the window — no bounds checking yet
+- `updated_at` relies on SQLAlchemy's `onupdate` hook; verify this fires correctly for partial updates in SQLite
+
+**Important context:**
+- The DB migration in `_migrate()` uses hardcoded column names in an f-string — not a real injection risk since values are literals, but looks like one
+- Tests use in-memory SQLite (`conftest.py`) — `_migrate()` is NOT called in tests, so migration logic itself is untested
+- Calendar is built as a `QDialog` with `Popup | FramelessWindowHint` flags; on some macOS window managers it may flicker — tested okay on dev machine
