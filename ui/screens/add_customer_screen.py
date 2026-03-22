@@ -142,10 +142,29 @@ class _DatePickerButton(QPushButton):
                 background: transparent; border: none; padding: 4px 8px;
             }
             QCalendarWidget QToolButton:hover { color: #3498db; }
+            QCalendarWidget QToolButton::menu-indicator { image: none; }
             QCalendarWidget #qt_calendar_navigationbar {
                 background: #f5f7fa;
                 border-bottom: 1px solid #e0e0e0;
                 padding: 4px;
+            }
+            QCalendarWidget QMenu {
+                background-color: white;
+                color: #2c3e50;
+                border: 1px solid #ccc;
+                font-size: 13px;
+            }
+            QCalendarWidget QMenu::item:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QCalendarWidget QSpinBox {
+                color: #2c3e50;
+                background: white;
+                border: 1px solid #ccc;
+                border-radius: 3px;
+                padding: 2px 4px;
+                font-size: 13px;
             }
         """)
         layout.addWidget(cal)
