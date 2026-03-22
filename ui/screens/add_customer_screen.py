@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QComboBox, QTextEdit, QMessageBox, QFormLayout, QScrollArea
+    QPushButton, QComboBox, QTextEdit, QMessageBox, QScrollArea, QFrame
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -16,13 +16,54 @@ GENDER_LABELS = {
     Gender.OTHER:  "אחר",
 }
 
+FIELD_STYLE = """
+    QLineEdit, QTextEdit {
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 7px 10px;
+        font-size: 13px;
+        background: white;
+        color: #2c3e50;
+    }
+    QLineEdit:focus, QTextEdit:focus {
+        border-color: #3498db;
+    }
+"""
+
+COMBO_STYLE = """
+    QComboBox {
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 7px 10px;
+        font-size: 13px;
+        background: white;
+        color: #2c3e50;
+    }
+    QComboBox:focus {
+        border-color: #3498db;
+    }
+    QComboBox::drop-down {
+        subcontrol-origin: padding;
+        subcontrol-position: left center;
+        width: 24px;
+        border: none;
+    }
+    QComboBox QAbstractItemView {
+        border: 1px solid #ccc;
+        background: white;
+        selection-background-color: #d6eaf8;
+        font-size: 13px;
+    }
+"""
+
+LABEL_STYLE = "font-size: 13px; color: #555; margin-bottom: 2px;"
+
 
 class AddCustomerScreen(QWidget):
-    customer_saved = pyqtSignal()   # emitted after successful save
+    customer_saved = pyqtSignal()
     cancelled = pyqtSignal()
 
     def __init__(self, customer_id: int | None = None):
-        """Pass customer_id to edit an existing customer, None to add new."""
         super().__init__()
         self._customer_id = customer_id
         self._build_ui()
@@ -33,81 +74,173 @@ class AddCustomerScreen(QWidget):
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(20, 20, 20, 20)
-        outer.setSpacing(12)
+        outer.setContentsMargins(24, 20, 24, 20)
+        outer.setSpacing(0)
 
         # Title
         title_text = "עריכת לקוח" if self._customer_id else "הוספת לקוח חדש"
         title = QLabel(title_text)
         title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        title.setStyleSheet("color: #2c3e50;")
+        title.setStyleSheet("color: #2c3e50; margin-bottom: 16px;")
         outer.addWidget(title)
 
-        # Scroll area for the form
+        # Scroll area
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setStyleSheet("QScrollArea { border: none; }")
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
 
         form_widget = QWidget()
-        form = QFormLayout(form_widget)
-        form.setSpacing(12)
-        form.setContentsMargins(0, 0, 0, 0)
-        form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+        form_widget.setStyleSheet("background: transparent;")
+        form_layout = QVBoxLayout(form_widget)
+        form_layout.setSpacing(14)
+        form_layout.setContentsMargins(0, 0, 12, 0)
 
+        # Row 1: שם + שם משפחה side by side
+        row1 = QHBoxLayout()
+        row1.setSpacing(16)
+
+        name_col = QVBoxLayout()
+        name_col.setSpacing(4)
+        name_col.addWidget(self._label("שם פרטי *"))
         self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("שם פרטי")
-        form.addRow("שם *", self.name_input)
+        self.name_input.setPlaceholderText("הכנס שם פרטי")
+        self.name_input.setMinimumHeight(36)
+        self.name_input.setStyleSheet(FIELD_STYLE)
+        name_col.addWidget(self.name_input)
+        row1.addLayout(name_col)
 
+        surname_col = QVBoxLayout()
+        surname_col.setSpacing(4)
+        surname_col.addWidget(self._label("שם משפחה *"))
         self.surname_input = QLineEdit()
-        self.surname_input.setPlaceholderText("שם משפחה")
-        form.addRow("שם משפחה *", self.surname_input)
+        self.surname_input.setPlaceholderText("הכנס שם משפחה")
+        self.surname_input.setMinimumHeight(36)
+        self.surname_input.setStyleSheet(FIELD_STYLE)
+        surname_col.addWidget(self.surname_input)
+        row1.addLayout(surname_col)
 
+        form_layout.addLayout(row1)
+
+        # Row 2: טלפון + אימייל side by side
+        row2 = QHBoxLayout()
+        row2.setSpacing(16)
+
+        phone_col = QVBoxLayout()
+        phone_col.setSpacing(4)
+        phone_col.addWidget(self._label("טלפון"))
+        self.phone_input = QLineEdit()
+        self.phone_input.setPlaceholderText("050-0000000")
+        self.phone_input.setMinimumHeight(36)
+        self.phone_input.setStyleSheet(FIELD_STYLE)
+        phone_col.addWidget(self.phone_input)
+        row2.addLayout(phone_col)
+
+        email_col = QVBoxLayout()
+        email_col.setSpacing(4)
+        email_col.addWidget(self._label("אימייל"))
+        self.email_input = QLineEdit()
+        self.email_input.setPlaceholderText("example@email.com")
+        self.email_input.setMinimumHeight(36)
+        self.email_input.setStyleSheet(FIELD_STYLE)
+        email_col.addWidget(self.email_input)
+        row2.addLayout(email_col)
+
+        form_layout.addLayout(row2)
+
+        # Row 3: מגדר + סטטוס side by side
+        row3 = QHBoxLayout()
+        row3.setSpacing(16)
+
+        gender_col = QVBoxLayout()
+        gender_col.setSpacing(4)
+        gender_col.addWidget(self._label("מגדר"))
         self.gender_combo = QComboBox()
+        self.gender_combo.setMinimumHeight(36)
+        self.gender_combo.setStyleSheet(COMBO_STYLE)
         self.gender_combo.addItem("לא צוין", None)
         for g, label in GENDER_LABELS.items():
             self.gender_combo.addItem(label, g)
-        form.addRow("מגדר", self.gender_combo)
+        gender_col.addWidget(self.gender_combo)
+        row3.addLayout(gender_col)
 
-        self.phone_input = QLineEdit()
-        self.phone_input.setPlaceholderText("מספר טלפון")
-        form.addRow("טלפון", self.phone_input)
-
-        self.email_input = QLineEdit()
-        self.email_input.setPlaceholderText("כתובת אימייל")
-        form.addRow("אימייל", self.email_input)
-
+        status_col = QVBoxLayout()
+        status_col.setSpacing(4)
+        status_col.addWidget(self._label("סטטוס *"))
         self.status_combo = QComboBox()
+        self.status_combo.setMinimumHeight(36)
+        self.status_combo.setStyleSheet(COMBO_STYLE)
         for s in CustomerStatus:
             self.status_combo.addItem(STATUS_LABELS[s.value], s)
-        form.addRow("סטטוס *", self.status_combo)
+        status_col.addWidget(self.status_combo)
+        row3.addLayout(status_col)
 
+        form_layout.addLayout(row3)
+
+        # Notes (full width)
+        notes_col = QVBoxLayout()
+        notes_col.setSpacing(4)
+        notes_col.addWidget(self._label("הערות"))
         self.notes_input = QTextEdit()
-        self.notes_input.setPlaceholderText("הערות...")
-        self.notes_input.setFixedHeight(100)
-        form.addRow("הערות", self.notes_input)
+        self.notes_input.setPlaceholderText("הערות על הלקוח...")
+        self.notes_input.setFixedHeight(110)
+        self.notes_input.setStyleSheet(FIELD_STYLE)
+        notes_col.addWidget(self.notes_input)
+        form_layout.addLayout(notes_col)
 
+        form_layout.addStretch()
         scroll.setWidget(form_widget)
         outer.addWidget(scroll)
 
         # Error label
         self.error_label = QLabel("")
-        self.error_label.setStyleSheet("color: #e74c3c;")
+        self.error_label.setStyleSheet("color: #e74c3c; font-size: 12px; margin-top: 6px;")
         outer.addWidget(self.error_label)
 
-        # Buttons row
+        # Divider
+        divider = QFrame()
+        divider.setFrameShape(QFrame.Shape.HLine)
+        divider.setStyleSheet("color: #eee; margin: 10px 0;")
+        outer.addWidget(divider)
+
+        # Buttons
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
         btn_cancel = QPushButton("ביטול")
-        btn_cancel.setObjectName("btn_secondary")
+        btn_cancel.setFixedHeight(36)
+        btn_cancel.setMinimumWidth(90)
+        btn_cancel.setStyleSheet("""
+            QPushButton {
+                background: #ecf0f1; color: #555;
+                border: 1px solid #ccc; border-radius: 5px;
+                font-size: 13px;
+            }
+            QPushButton:hover { background: #dde; }
+        """)
         btn_cancel.clicked.connect(self.cancelled.emit)
         btn_row.addWidget(btn_cancel)
 
-        btn_save = QPushButton("שמור")
+        btn_save = QPushButton("שמור לקוח")
+        btn_save.setFixedHeight(36)
+        btn_save.setMinimumWidth(110)
+        btn_save.setStyleSheet("""
+            QPushButton {
+                background: #3498db; color: white;
+                border: none; border-radius: 5px;
+                font-size: 13px; font-weight: bold;
+            }
+            QPushButton:hover { background: #2980b9; }
+        """)
         btn_save.clicked.connect(self._on_save)
         btn_row.addWidget(btn_save)
 
         outer.addLayout(btn_row)
+
+    def _label(self, text: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setStyleSheet(LABEL_STYLE)
+        return lbl
 
     def _load_customer(self, customer_id: int):
         customer = customer_controller.get_by_id(customer_id)
@@ -122,13 +255,11 @@ class AddCustomerScreen(QWidget):
         self.email_input.setText(customer.email or "")
         self.notes_input.setPlainText(customer.notes or "")
 
-        # Set gender combo
         for i in range(self.gender_combo.count()):
             if self.gender_combo.itemData(i) == customer.gender:
                 self.gender_combo.setCurrentIndex(i)
                 break
 
-        # Set status combo
         for i in range(self.status_combo.count()):
             if self.status_combo.itemData(i) == customer.status:
                 self.status_combo.setCurrentIndex(i)
