@@ -1,7 +1,8 @@
 from datetime import date
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QComboBox, QTextEdit, QMessageBox, QScrollArea, QFrame, QDateEdit
+    QPushButton, QComboBox, QTextEdit, QMessageBox, QScrollArea, QFrame,
+    QDialog, QCalendarWidget
 )
 from PyQt6.QtCore import Qt, QDate, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -69,6 +70,96 @@ COMBO_STYLE = """
 """
 
 LABEL_STYLE = "font-size: 13px; color: #555; margin-bottom: 2px;"
+
+
+class _DatePickerButton(QPushButton):
+    """Button that opens a LTR calendar popup and emits date_changed."""
+    date_changed = pyqtSignal(object)   # date | None
+
+    def __init__(self, parent=None):
+        super().__init__("לא צוין", parent)
+        self._date = None
+        self.setMinimumHeight(36)
+        self._apply_style(False)
+        self.clicked.connect(self._open_calendar)
+
+    def _apply_style(self, selected: bool):
+        color = "#2c3e50" if selected else "#aaa"
+        self.setStyleSheet(f"""
+            QPushButton {{
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 7px 10px;
+                font-size: 13px;
+                background: white;
+                color: {color};
+                text-align: right;
+            }}
+            QPushButton:hover {{ border-color: #3498db; }}
+            QPushButton:focus {{ border-color: #3498db; outline: none; }}
+        """)
+
+    def get_date(self) -> date | None:
+        return self._date
+
+    def set_date(self, d: date | None):
+        self._date = d
+        if d:
+            self.setText(f"{d.day:02d}/{d.month:02d}/{d.year}")
+            self._apply_style(True)
+        else:
+            self.setText("לא צוין")
+            self._apply_style(False)
+
+    def _open_calendar(self):
+        dlg = QDialog(self.window())
+        dlg.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        dlg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        dlg.setStyleSheet("QDialog { border: 1px solid #ccc; border-radius: 6px; }")
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(4, 4, 4, 4)
+
+        cal = QCalendarWidget()
+        cal.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        cal.setGridVisible(False)
+        cal.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
+        cal.setMinimumDate(QDate(1920, 1, 1))
+        cal.setMaximumDate(QDate.currentDate())
+        cal.setSelectedDate(
+            QDate(self._date.year, self._date.month, self._date.day)
+            if self._date else QDate.currentDate()
+        )
+        cal.setStyleSheet("""
+            QCalendarWidget QWidget { font-size: 13px; }
+            QCalendarWidget QAbstractItemView:enabled {
+                color: #2c3e50;
+                selection-background-color: #3498db;
+                selection-color: white;
+            }
+            QCalendarWidget QToolButton {
+                color: #2c3e50; font-size: 13px; font-weight: bold;
+                background: transparent; border: none; padding: 4px 8px;
+            }
+            QCalendarWidget QToolButton:hover { color: #3498db; }
+            QCalendarWidget #qt_calendar_navigationbar {
+                background: #f5f7fa;
+                border-bottom: 1px solid #e0e0e0;
+                padding: 4px;
+            }
+        """)
+        layout.addWidget(cal)
+
+        pos = self.mapToGlobal(self.rect().bottomLeft())
+        dlg.move(pos)
+
+        def on_clicked(qdate: QDate):
+            self.set_date(date(qdate.year(), qdate.month(), qdate.day()))
+            self.date_changed.emit(self._date)
+            dlg.accept()
+
+        cal.clicked.connect(on_clicked)
+        dlg.exec()
 
 
 class AddCustomerScreen(QWidget):
@@ -239,18 +330,7 @@ class AddCustomerScreen(QWidget):
         dob_col = QVBoxLayout()
         dob_col.setSpacing(4)
         dob_col.addWidget(self._label("תאריך לידה"))
-        self.dob_input = QDateEdit()
-        self.dob_input.setCalendarPopup(True)
-        self.dob_input.setDisplayFormat("dd/MM/yyyy")
-        self.dob_input.setMinimumHeight(36)
-        self.dob_input.setMinimumDate(QDate(1920, 1, 1))
-        self.dob_input.setMaximumDate(QDate.currentDate())
-        self.dob_input.setDate(QDate.currentDate())
-        self.dob_input.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-        self.dob_input.calendarWidget().setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-        self._dob_set = False   # tracks whether user actually picked a date
-        self.dob_input.dateChanged.connect(lambda _: setattr(self, "_dob_set", True))
-        self.dob_input.setStyleSheet(COMBO_STYLE.replace("QComboBox", "QDateEdit"))
+        self.dob_input = _DatePickerButton()
         dob_col.addWidget(self.dob_input)
         row4.addLayout(dob_col)
 
@@ -354,12 +434,7 @@ class AddCustomerScreen(QWidget):
         self.email_input.setText(customer.email or "")
         self.address_input.setText(customer.address or "")
         if customer.date_of_birth:
-            self.dob_input.setDate(QDate(
-                customer.date_of_birth.year,
-                customer.date_of_birth.month,
-                customer.date_of_birth.day,
-            ))
-            self._dob_set = True
+            self.dob_input.set_date(customer.date_of_birth)
         self.notes_input.setPlainText(customer.notes or "")
 
         for i in range(self.gender_combo.count()):
@@ -384,8 +459,7 @@ class AddCustomerScreen(QWidget):
         status = self.status_combo.currentData()
         notes = self.notes_input.toPlainText().strip()
         address = self.address_input.text().strip()
-        qdate = self.dob_input.date()
-        dob = date(qdate.year(), qdate.month(), qdate.day()) if self._dob_set else None
+        dob = self.dob_input.get_date()
 
         try:
             if self._customer_id:
