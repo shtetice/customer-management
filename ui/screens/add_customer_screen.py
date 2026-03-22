@@ -246,8 +246,27 @@ class AddCustomerScreen(QWidget):
         self.dob_input.setSpecialValueText("לא צוין")
         self.dob_input.setMinimumDate(QDate(1900, 1, 1))
         self.dob_input.setDate(QDate(1900, 1, 1))   # default = "לא צוין"
-        self.dob_input.setStyleSheet(FIELD_STYLE + """
-            QDateEdit::drop-down { border: none; width: 24px; }
+        self.dob_input.setStyleSheet("""
+            QDateEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 7px 10px;
+                font-size: 13px;
+                background: white;
+                color: #2c3e50;
+            }
+            QDateEdit:focus {
+                border-color: #3498db;
+            }
+            QDateEdit::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: left center;
+                width: 28px;
+                border-left: 1px solid #ccc;
+                background: #f5f5f5;
+                border-top-left-radius: 4px;
+                border-bottom-left-radius: 4px;
+            }
         """)
         dob_col.addWidget(self.dob_input)
         row4.addLayout(dob_col)
