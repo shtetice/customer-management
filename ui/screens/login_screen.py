@@ -1,10 +1,11 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QMessageBox
+    QLineEdit, QPushButton, QCheckBox, QMessageBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 from services.auth_service import auth_service
+from services.session_service import session_service
 
 
 class LoginScreen(QWidget):
@@ -75,7 +76,14 @@ class LoginScreen(QWidget):
         self.password_input.returnPressed.connect(self._on_login)
         layout.addWidget(self.password_input)
 
-        layout.addSpacing(8)
+        self.remember_checkbox = QCheckBox("זכור אותי למשך 24 שעות")
+        self.remember_checkbox.setStyleSheet("""
+            QCheckBox { color: #555; font-size: 12px; }
+            QCheckBox::indicator { width: 16px; height: 16px; }
+        """)
+        layout.addWidget(self.remember_checkbox)
+
+        layout.addSpacing(4)
 
         self.error_label = QLabel("")
         self.error_label.setStyleSheet("color: #e74c3c; font-size: 12px;")
@@ -98,6 +106,13 @@ class LoginScreen(QWidget):
             return
 
         if auth_service.login(username, password):
+            if self.remember_checkbox.isChecked():
+                session_service.save(
+                    auth_service.current_user.id,
+                    auth_service.current_user.username,
+                )
+            else:
+                session_service.clear()
             self.error_label.setText("")
             self.login_successful.emit()
         else:

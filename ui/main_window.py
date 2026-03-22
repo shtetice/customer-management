@@ -129,5 +129,7 @@ class MainWindow(QMainWindow):
             btn.style().polish(btn)
 
     def _logout(self):
+        from services.session_service import session_service
+        session_service.clear()
         auth_service.logout()
         self.close()
