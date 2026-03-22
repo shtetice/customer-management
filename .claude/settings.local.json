@@ -10,7 +10,8 @@
       "Bash(pyenv versions:*)",
       "Bash(rm -rf venv)",
       "Bash(/Users/tzahmalka/.pyenv/versions/3.11.9/bin/python3 -m venv venv)",
-      "Bash(venv/bin/python -m pytest tests/ -v)"
+      "Bash(venv/bin/python -m pytest tests/ -v)",
+      "Bash(venv/bin/python -m pytest tests/ -q)"
     ]
   }
 }

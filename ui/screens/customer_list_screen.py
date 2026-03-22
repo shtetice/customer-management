@@ -45,14 +45,49 @@ class CustomerListScreen(QWidget):
 
         # Filter bar
         filter_row = QHBoxLayout()
+        filter_row.setSpacing(12)
+
+        # Search field with label
+        search_label = QLabel("🔍  חיפוש:")
+        search_label.setStyleSheet("color: #555; font-size: 13px;")
+        filter_row.addWidget(search_label)
 
         self.search_input = QLineEdit()
-        self.search_input.setObjectName("search_bar")
-        self.search_input.setPlaceholderText("חיפוש לפי שם, טלפון או אימייל...")
+        self.search_input.setPlaceholderText("שם, טלפון או אימייל...")
+        self.search_input.setMinimumHeight(34)
+        self.search_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                padding: 4px 10px;
+                font-size: 13px;
+                background: white;
+            }
+            QLineEdit:focus { border-color: #3498db; }
+        """)
         self.search_input.textChanged.connect(self._refresh)
         filter_row.addWidget(self.search_input, stretch=3)
 
+        # Status filter with label
+        status_label = QLabel("סטטוס:")
+        status_label.setStyleSheet("color: #555; font-size: 13px;")
+        filter_row.addWidget(status_label)
+
         self.status_filter = QComboBox()
+        self.status_filter.setMinimumHeight(34)
+        self.status_filter.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #bdc3c7;
+                border-radius: 4px;
+                padding: 4px 10px;
+                font-size: 13px;
+                background: white;
+                min-width: 140px;
+            }
+            QComboBox:focus { border-color: #3498db; }
+            QComboBox::drop-down { border: none; width: 24px; }
+            QComboBox::down-arrow { width: 12px; height: 12px; }
+        """)
         self.status_filter.addItem("כל הסטטוסים", None)
         for s in CustomerStatus:
             self.status_filter.addItem(STATUS_LABELS[s.value], s)
