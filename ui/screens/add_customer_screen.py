@@ -121,34 +121,12 @@ class _DatePickerButton(QPushButton):
         layout.setContentsMargins(6, 6, 6, 6)
         layout.setSpacing(4)
 
-        # Year dropdown row
         current_year = QDate.currentDate().year()
         default = (
             QDate(self._date.year, self._date.month, self._date.day)
             if self._date
             else QDate(current_year - 30, 1, 1)
         )
-
-        year_combo = QComboBox()
-        year_combo.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-        year_combo.setFixedHeight(28)
-        year_combo.setStyleSheet("""
-            QComboBox {
-                border: 1px solid #ccc; border-radius: 4px;
-                padding: 3px 8px; font-size: 13px;
-                background: white; color: #2c3e50;
-            }
-            QComboBox::drop-down { border: none; width: 20px; }
-            QComboBox QAbstractItemView {
-                background: white; color: #2c3e50;
-                selection-background-color: #3498db; selection-color: white;
-                font-size: 13px;
-            }
-        """)
-        for y in range(current_year, 1919, -1):
-            year_combo.addItem(str(y), y)
-        year_combo.setCurrentText(str(default.year()))
-        layout.addWidget(year_combo)
 
         cal = QCalendarWidget()
         cal.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
@@ -182,21 +160,50 @@ class _DatePickerButton(QPushButton):
             QCalendarWidget QMenu::item:selected {
                 background-color: #3498db; color: white;
             }
-            QCalendarWidget QSpinBox { color: transparent; background: transparent; border: none; }
-            QCalendarWidget QSpinBox::up-button, QCalendarWidget QSpinBox::down-button { width: 0; }
         """)
         layout.addWidget(cal)
 
-        # Sync year combo → calendar
-        def on_year_combo_changed(idx):
-            year = year_combo.itemData(idx)
-            cal.setCurrentPage(year, cal.monthShown())
-        year_combo.currentIndexChanged.connect(on_year_combo_changed)
+        # Replace the built-in year spinbox with a styled combobox
+        from PyQt6.QtWidgets import QSpinBox
+        year_spin = cal.findChild(QSpinBox, "qt_calendar_yearedit")
+        if year_spin:
+            year_combo = QComboBox(year_spin.parent())
+            year_combo.setMaxVisibleItems(10)
+            year_combo.setFixedHeight(year_spin.height())
+            year_combo.setStyleSheet("""
+                QComboBox {
+                    border: 1px solid #ccc; border-radius: 3px;
+                    padding: 1px 6px; font-size: 13px; font-weight: bold;
+                    background: white; color: #2c3e50; min-width: 55px;
+                }
+                QComboBox::drop-down { border: none; width: 16px; }
+                QComboBox QAbstractItemView {
+                    background: white; color: #2c3e50;
+                    selection-background-color: #3498db; selection-color: white;
+                    font-size: 13px;
+                }
+            """)
+            for y in range(current_year, 1919, -1):
+                year_combo.addItem(str(y), y)
+            year_combo.setCurrentText(str(default.year()))
 
-        # Sync calendar navigation → year combo
-        def on_page_changed(year, _month):
-            year_combo.setCurrentText(str(year))
-        cal.currentPageChanged.connect(on_page_changed)
+            nav_layout = year_spin.parent().layout()
+            if nav_layout:
+                for i in range(nav_layout.count()):
+                    if nav_layout.itemAt(i).widget() == year_spin:
+                        nav_layout.insertWidget(i, year_combo)
+                        break
+            year_spin.hide()
+
+            def on_year_combo_changed(idx):
+                cal.setCurrentPage(year_combo.itemData(idx), cal.monthShown())
+            year_combo.currentIndexChanged.connect(on_year_combo_changed)
+
+            def on_page_changed(year, _month):
+                year_combo.blockSignals(True)
+                year_combo.setCurrentText(str(year))
+                year_combo.blockSignals(False)
+            cal.currentPageChanged.connect(on_page_changed)
 
         pos = self.mapToGlobal(self.rect().bottomLeft())
         dlg.move(pos)
