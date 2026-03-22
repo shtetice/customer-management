@@ -148,16 +148,11 @@ class _DatePickerButton(QPushButton):
                 QPushButton:hover { color: #3498db; }
             """)
 
-        month_label = QLabel(MONTHS[default.month() - 1])
-        month_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #2c3e50;")
-        month_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        month_label.setMinimumWidth(90)
-
         combo_style = """
             QComboBox {
                 border: 1px solid #ccc; border-radius: 3px;
                 padding: 1px 4px; font-size: 13px; font-weight: bold;
-                background: white; color: #2c3e50; min-width: 52px;
+                background: white; color: #2c3e50;
             }
             QComboBox::drop-down { border: none; width: 14px; }
             QComboBox QAbstractItemView {
@@ -166,6 +161,15 @@ class _DatePickerButton(QPushButton):
                 font-size: 13px;
             }
         """
+
+        month_combo = QComboBox()
+        month_combo.setFixedHeight(24)
+        month_combo.setEditable(False)
+        month_combo.setStyleSheet(combo_style)
+        for m in MONTHS:
+            month_combo.addItem(m)
+        month_combo.setCurrentIndex(default.month() - 1)
+
         year_combo = QComboBox()
         year_combo.setMaxVisibleItems(10)
         year_combo.setFixedHeight(24)
@@ -176,7 +180,7 @@ class _DatePickerButton(QPushButton):
         year_combo.setCurrentText(str(default.year()))
 
         nav_layout.addWidget(btn_prev)
-        nav_layout.addWidget(month_label, 1)
+        nav_layout.addWidget(month_combo, 1)
         nav_layout.addWidget(year_combo)
         nav_layout.addWidget(btn_next)
         layout.addWidget(nav)
@@ -201,16 +205,22 @@ class _DatePickerButton(QPushButton):
         layout.addWidget(cal)
 
         # ── Sync logic ───────────────────────────────────────────────────
-        def update_label(year, month):
-            month_label.setText(MONTHS[month - 1])
+        def update_combos(year, month):
+            month_combo.blockSignals(True)
             year_combo.blockSignals(True)
+            month_combo.setCurrentIndex(month - 1)
             year_combo.setCurrentText(str(year))
+            month_combo.blockSignals(False)
             year_combo.blockSignals(False)
 
-        cal.currentPageChanged.connect(update_label)
+        cal.currentPageChanged.connect(update_combos)
 
         btn_prev.clicked.connect(lambda: cal.showPreviousMonth())
         btn_next.clicked.connect(lambda: cal.showNextMonth())
+
+        def on_month_changed(idx):
+            cal.setCurrentPage(cal.yearShown(), idx + 1)
+        month_combo.currentIndexChanged.connect(on_month_changed)
 
         def on_year_changed(idx):
             cal.setCurrentPage(year_combo.itemData(idx), cal.monthShown())
