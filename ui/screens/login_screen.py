@@ -45,15 +45,33 @@ class LoginScreen(QWidget):
 
         layout.addSpacing(8)
 
+        input_style = """
+            QLineEdit {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                padding: 8px 12px;
+                font-size: 13px;
+                background-color: #ffffff;
+                color: #2c3e50;
+            }
+            QLineEdit:focus {
+                border-color: #3498db;
+            }
+        """
+
         layout.addWidget(QLabel("שם משתמש"))
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("הכנס שם משתמש")
+        self.username_input.setMinimumHeight(38)
+        self.username_input.setStyleSheet(input_style)
         layout.addWidget(self.username_input)
 
         layout.addWidget(QLabel("סיסמה"))
         self.password_input = QLineEdit()
         self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.password_input.setPlaceholderText("הכנס סיסמה")
+        self.password_input.setMinimumHeight(38)
+        self.password_input.setStyleSheet(input_style)
         self.password_input.returnPressed.connect(self._on_login)
         layout.addWidget(self.password_input)
 
