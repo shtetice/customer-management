@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(update-config)",
+      "Bash(cd:*)",
+      "Bash(python3 -m venv venv)",
+      "Bash(venv/bin/pip install:*)",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/homebrew/**)",
+      "Bash(pyenv versions:*)",
+      "Bash(rm -rf venv)",
+      "Bash(/Users/tzahmalka/.pyenv/versions/3.11.9/bin/python3 -m venv venv)",
+      "Bash(venv/bin/python -m pytest tests/ -v)"
+    ]
+  }
+}
