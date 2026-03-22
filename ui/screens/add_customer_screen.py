@@ -119,7 +119,7 @@ class _DatePickerButton(QPushButton):
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(6, 6, 6, 6)
-        layout.setSpacing(4)
+        layout.setSpacing(0)
 
         current_year = QDate.currentDate().year()
         default = (
@@ -128,10 +128,65 @@ class _DatePickerButton(QPushButton):
             else QDate(current_year - 30, 1, 1)
         )
 
+        # ── Custom nav bar ──────────────────────────────────────────────
+        MONTHS = ["January","February","March","April","May","June",
+                  "July","August","September","October","November","December"]
+
+        nav = QWidget()
+        nav.setStyleSheet("background: #f5f7fa; border-bottom: 1px solid #e0e0e0;")
+        nav_layout = QHBoxLayout(nav)
+        nav_layout.setContentsMargins(6, 4, 6, 4)
+        nav_layout.setSpacing(4)
+
+        btn_prev = QPushButton("◀")
+        btn_next = QPushButton("▶")
+        for btn in (btn_prev, btn_next):
+            btn.setFixedSize(24, 24)
+            btn.setStyleSheet("""
+                QPushButton { background: transparent; border: none;
+                              font-size: 12px; color: #2c3e50; }
+                QPushButton:hover { color: #3498db; }
+            """)
+
+        month_label = QLabel(MONTHS[default.month() - 1])
+        month_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #2c3e50;")
+        month_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        month_label.setMinimumWidth(90)
+
+        combo_style = """
+            QComboBox {
+                border: 1px solid #ccc; border-radius: 3px;
+                padding: 1px 4px; font-size: 13px; font-weight: bold;
+                background: white; color: #2c3e50; min-width: 52px;
+            }
+            QComboBox::drop-down { border: none; width: 14px; }
+            QComboBox QAbstractItemView {
+                background: white; color: #2c3e50;
+                selection-background-color: #3498db; selection-color: white;
+                font-size: 13px;
+            }
+        """
+        year_combo = QComboBox()
+        year_combo.setMaxVisibleItems(10)
+        year_combo.setFixedHeight(24)
+        year_combo.setEditable(False)
+        year_combo.setStyleSheet(combo_style)
+        for y in range(current_year, 1919, -1):
+            year_combo.addItem(str(y), y)
+        year_combo.setCurrentText(str(default.year()))
+
+        nav_layout.addWidget(btn_prev)
+        nav_layout.addWidget(month_label, 1)
+        nav_layout.addWidget(year_combo)
+        nav_layout.addWidget(btn_next)
+        layout.addWidget(nav)
+
+        # ── Calendar (nav bar hidden) ────────────────────────────────────
         cal = QCalendarWidget()
         cal.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         cal.setGridVisible(False)
         cal.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
+        cal.setNavigationBarVisible(False)
         cal.setMinimumDate(QDate(1920, 1, 1))
         cal.setMaximumDate(QDate.currentDate())
         cal.setSelectedDate(default)
@@ -142,72 +197,24 @@ class _DatePickerButton(QPushButton):
                 selection-background-color: #3498db;
                 selection-color: white;
             }
-            QCalendarWidget QToolButton {
-                color: #2c3e50; font-size: 13px; font-weight: bold;
-                background: transparent; border: none; padding: 4px 8px;
-            }
-            QCalendarWidget QToolButton:hover { color: #3498db; }
-            QCalendarWidget QToolButton::menu-indicator { image: none; }
-            QCalendarWidget #qt_calendar_navigationbar {
-                background: #f5f7fa;
-                border-bottom: 1px solid #e0e0e0;
-                padding: 4px;
-            }
-            QCalendarWidget QMenu {
-                background-color: white; color: #2c3e50;
-                border: 1px solid #ccc; font-size: 13px;
-            }
-            QCalendarWidget QMenu::item:selected {
-                background-color: #3498db; color: white;
-            }
         """)
         layout.addWidget(cal)
 
-        # Replace the built-in year spinbox with a styled combobox
-        from PyQt6.QtWidgets import QSpinBox
-        year_spin = cal.findChild(QSpinBox, "qt_calendar_yearedit")
-        if year_spin:
-            year_combo = QComboBox(year_spin.parent())
-            year_combo.setMaxVisibleItems(10)
-            year_combo.setFixedHeight(year_spin.height())
-            year_combo.setEditable(False)
-            year_combo.setStyleSheet("""
-                QComboBox {
-                    border: 1px solid #ccc; border-radius: 3px;
-                    padding: 1px 6px; font-size: 13px; font-weight: bold;
-                    background: white; color: #2c3e50; min-width: 55px;
-                }
-                QComboBox::drop-down { border: none; width: 16px; }
-                QComboBox QAbstractItemView {
-                    background: white; color: #2c3e50;
-                    selection-background-color: #3498db; selection-color: white;
-                    font-size: 13px; max-height: 200px;
-                }
-            """)
-            for y in range(current_year, 1919, -1):
-                year_combo.addItem(str(y), y)
-            year_combo.setCurrentText(str(default.year()))
-            year_combo.view().setFixedHeight(10 * 22)   # 10 rows × 22px
+        # ── Sync logic ───────────────────────────────────────────────────
+        def update_label(year, month):
+            month_label.setText(MONTHS[month - 1])
+            year_combo.blockSignals(True)
+            year_combo.setCurrentText(str(year))
+            year_combo.blockSignals(False)
 
-            nav_layout = year_spin.parent().layout()
-            if nav_layout:
-                for i in range(nav_layout.count()):
-                    if nav_layout.itemAt(i).widget() == year_spin:
-                        nav_layout.insertWidget(i, year_combo)
-                        break
-            # Fully collapse the spinbox so it takes no space
-            year_spin.setFixedSize(0, 0)
-            year_spin.hide()
+        cal.currentPageChanged.connect(update_label)
 
-            def on_year_combo_changed(idx):
-                cal.setCurrentPage(year_combo.itemData(idx), cal.monthShown())
-            year_combo.currentIndexChanged.connect(on_year_combo_changed)
+        btn_prev.clicked.connect(lambda: cal.showPreviousMonth())
+        btn_next.clicked.connect(lambda: cal.showNextMonth())
 
-            def on_page_changed(year, _month):
-                year_combo.blockSignals(True)
-                year_combo.setCurrentText(str(year))
-                year_combo.blockSignals(False)
-            cal.currentPageChanged.connect(on_page_changed)
+        def on_year_changed(idx):
+            cal.setCurrentPage(year_combo.itemData(idx), cal.monthShown())
+        year_combo.currentIndexChanged.connect(on_year_changed)
 
         pos = self.mapToGlobal(self.rect().bottomLeft())
         dlg.move(pos)
