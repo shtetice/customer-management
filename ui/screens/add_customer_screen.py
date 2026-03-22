@@ -165,8 +165,8 @@ class AddCustomerScreen(QWidget):
 
         btn_row = QHBoxLayout()
         btn_row.setContentsMargins(0, 2, 0, 0)
-        btn_row.addStretch()
         btn_row.addWidget(self._btn_add_phone)
+        btn_row.addStretch()
         phones_col.addLayout(btn_row)
 
         # Row 2: phones + email side by side
