@@ -2,9 +2,9 @@ from datetime import date
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QTextEdit, QMessageBox, QScrollArea, QFrame,
-    QDialog, QCalendarWidget
+    QDialog, QCalendarWidget, QApplication
 )
-from PyQt6.QtCore import Qt, QDate, pyqtSignal
+from PyQt6.QtCore import Qt, QDate, QPoint, pyqtSignal
 from PyQt6.QtGui import QFont
 
 from database.models import CustomerStatus, Gender
@@ -226,8 +226,12 @@ class _DatePickerButton(QPushButton):
             cal.setCurrentPage(year_combo.itemData(idx), cal.monthShown())
         year_combo.currentIndexChanged.connect(on_year_changed)
 
+        dlg.adjustSize()
         pos = self.mapToGlobal(self.rect().bottomLeft())
-        dlg.move(pos)
+        screen = QApplication.primaryScreen().availableGeometry()
+        x = min(pos.x(), screen.right() - dlg.width())
+        y = min(pos.y(), screen.bottom() - dlg.height())
+        dlg.move(QPoint(max(x, screen.left()), max(y, screen.top())))
 
         def on_clicked(qdate: QDate):
             self.set_date(date(qdate.year(), qdate.month(), qdate.day()))

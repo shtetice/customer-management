@@ -1,4 +1,5 @@
 import pytest
+from datetime import date
 from controllers.customer_controller import CustomerController
 from database.models import CustomerStatus, Gender
 
@@ -100,3 +101,35 @@ def test_delete_customer(ctrl):
 def test_delete_nonexistent_raises(ctrl):
     with pytest.raises(ValueError, match="לא נמצא"):
         ctrl.delete(9999)
+
+
+def test_create_with_address_and_dob(ctrl):
+    dob = date(1990, 5, 15)
+    c = ctrl.create("רחל", "כץ", Gender.FEMALE, "050-1234567", "", "",
+                    "", CustomerStatus.LEAD, "", address="רחוב הרצל 1, תל אביב", date_of_birth=dob)
+    assert c.address == "רחוב הרצל 1, תל אביב"
+    assert c.date_of_birth == dob
+
+
+def test_create_without_address_and_dob(ctrl):
+    c = _create(ctrl)
+    assert c.address is None
+    assert c.date_of_birth is None
+
+
+def test_update_sets_address_and_dob(ctrl):
+    c = _create(ctrl)
+    dob = date(1985, 3, 20)
+    updated = ctrl.update(c.id, c.name, c.surname, None, "", "", "",
+                          "", CustomerStatus.LEAD, "", address="שדרות בן גוריון 5", date_of_birth=dob)
+    assert updated.address == "שדרות בן גוריון 5"
+    assert updated.date_of_birth == dob
+
+
+def test_update_clears_dob(ctrl):
+    dob = date(1990, 1, 1)
+    c = ctrl.create("משה", "לוי", None, "", "", "", "", CustomerStatus.LEAD, "",
+                    date_of_birth=dob)
+    updated = ctrl.update(c.id, c.name, c.surname, None, "", "", "",
+                          "", CustomerStatus.LEAD, "", date_of_birth=None)
+    assert updated.date_of_birth is None

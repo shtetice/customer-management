@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from database.models import Base, Feature
 
@@ -19,7 +19,7 @@ def _migrate():
     """Add new columns to existing tables if they don't exist yet."""
     with engine.connect() as conn:
         existing = [row[1] for row in conn.execute(
-            __import__("sqlalchemy").text("PRAGMA table_info(customers)")
+            text("PRAGMA table_info(customers)")
         )]
         for col, typedef in [
             ("phone2",        "VARCHAR(30)"),
@@ -28,7 +28,7 @@ def _migrate():
             ("date_of_birth", "DATE"),
         ]:
             if col not in existing:
-                conn.execute(__import__("sqlalchemy").text(
+                conn.execute(text(
                     f"ALTER TABLE customers ADD COLUMN {col} {typedef}"
                 ))
         conn.commit()
