@@ -246,6 +246,8 @@ class AddCustomerScreen(QWidget):
         self.dob_input.setMinimumDate(QDate(1920, 1, 1))
         self.dob_input.setMaximumDate(QDate.currentDate())
         self.dob_input.setDate(QDate.currentDate())
+        self.dob_input.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        self.dob_input.calendarWidget().setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self._dob_set = False   # tracks whether user actually picked a date
         self.dob_input.dateChanged.connect(lambda _: setattr(self, "_dob_set", True))
         self.dob_input.setStyleSheet(COMBO_STYLE.replace("QComboBox", "QDateEdit"))
