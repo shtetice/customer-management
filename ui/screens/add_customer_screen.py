@@ -243,31 +243,12 @@ class AddCustomerScreen(QWidget):
         self.dob_input.setCalendarPopup(True)
         self.dob_input.setDisplayFormat("dd/MM/yyyy")
         self.dob_input.setMinimumHeight(36)
-        self.dob_input.setSpecialValueText("לא צוין")
-        self.dob_input.setMinimumDate(QDate(1900, 1, 1))
-        self.dob_input.setDate(QDate(1900, 1, 1))   # default = "לא צוין"
-        self.dob_input.setStyleSheet("""
-            QDateEdit {
-                border: 1px solid #ccc;
-                border-radius: 5px;
-                padding: 7px 10px;
-                font-size: 13px;
-                background: white;
-                color: #2c3e50;
-            }
-            QDateEdit:focus {
-                border-color: #3498db;
-            }
-            QDateEdit::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: left center;
-                width: 28px;
-                border-left: 1px solid #ccc;
-                background: #f5f5f5;
-                border-top-left-radius: 4px;
-                border-bottom-left-radius: 4px;
-            }
-        """)
+        self.dob_input.setMinimumDate(QDate(1920, 1, 1))
+        self.dob_input.setMaximumDate(QDate.currentDate())
+        self.dob_input.setDate(QDate.currentDate())
+        self._dob_set = False   # tracks whether user actually picked a date
+        self.dob_input.dateChanged.connect(lambda _: setattr(self, "_dob_set", True))
+        self.dob_input.setStyleSheet(COMBO_STYLE.replace("QComboBox", "QDateEdit"))
         dob_col.addWidget(self.dob_input)
         row4.addLayout(dob_col)
 
@@ -376,6 +357,7 @@ class AddCustomerScreen(QWidget):
                 customer.date_of_birth.month,
                 customer.date_of_birth.day,
             ))
+            self._dob_set = True
         self.notes_input.setPlainText(customer.notes or "")
 
         for i in range(self.gender_combo.count()):
@@ -401,7 +383,7 @@ class AddCustomerScreen(QWidget):
         notes = self.notes_input.toPlainText().strip()
         address = self.address_input.text().strip()
         qdate = self.dob_input.date()
-        dob = date(qdate.year(), qdate.month(), qdate.day()) if qdate != QDate(1900, 1, 1) else None
+        dob = date(qdate.year(), qdate.month(), qdate.day()) if self._dob_set else None
 
         try:
             if self._customer_id:
