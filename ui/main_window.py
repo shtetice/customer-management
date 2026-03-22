@@ -7,6 +7,7 @@ from PyQt6.QtGui import QFont
 
 from ui.screens.customer_list_screen import CustomerListScreen
 from ui.screens.add_customer_screen import AddCustomerScreen
+from ui.screens.customer_detail_screen import CustomerDetailScreen
 from ui.styles import APP_STYLE
 from services.auth_service import auth_service
 
@@ -96,6 +97,7 @@ class MainWindow(QMainWindow):
         screen = CustomerListScreen()
         screen.request_add_customer.connect(self._show_add_customer)
         screen.request_edit_customer.connect(self._show_edit_customer)
+        screen.request_view_customer.connect(self._show_customer_detail)
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
         self._set_nav_active("customers")
@@ -105,6 +107,13 @@ class MainWindow(QMainWindow):
         screen = AddCustomerScreen()
         screen.customer_saved.connect(self._show_customer_list)
         screen.cancelled.connect(self._show_customer_list)
+        self.stack.addWidget(screen)
+        self.stack.setCurrentWidget(screen)
+
+    def _show_customer_detail(self, customer_id: int):
+        self._clear_stack()
+        screen = CustomerDetailScreen(customer_id)
+        screen.back_requested.connect(self._show_customer_list)
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
 

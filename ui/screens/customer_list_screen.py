@@ -15,6 +15,7 @@ from ui.styles import STATUS_COLORS, STATUS_LABELS
 class CustomerListScreen(QWidget):
     request_add_customer = pyqtSignal()
     request_edit_customer = pyqtSignal(int)   # customer_id
+    request_view_customer = pyqtSignal(int)   # customer_id
 
     COLUMNS = ["שם", "שם משפחה", "טלפון", "אימייל", "סטטוס", "פעולות"]
 
@@ -124,7 +125,7 @@ class CustomerListScreen(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(5, 150)
+        self.table.setColumnWidth(5, 210)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -169,16 +170,25 @@ class CustomerListScreen(QWidget):
             actions_layout.setContentsMargins(4, 2, 4, 2)
             actions_layout.setSpacing(6)
 
+            btn_view = QPushButton("פרטים")
+            btn_view.setFixedWidth(65)
+            btn_view.setStyleSheet("""
+                QPushButton { background:#8e44ad; color:white; border:none; border-radius:4px; font-size:12px; }
+                QPushButton:hover { background:#7d3c98; }
+            """)
+            btn_view.clicked.connect(lambda _, cid=customer.id: self.request_view_customer.emit(cid))
+            actions_layout.addWidget(btn_view)
+
             if auth_service.has_permission("customers.edit"):
                 btn_edit = QPushButton("עריכה")
-                btn_edit.setFixedWidth(70)
+                btn_edit.setFixedWidth(65)
                 btn_edit.clicked.connect(lambda _, cid=customer.id: self.request_edit_customer.emit(cid))
                 actions_layout.addWidget(btn_edit)
 
             if auth_service.has_permission("customers.delete"):
                 btn_del = QPushButton("מחק")
                 btn_del.setObjectName("btn_danger")
-                btn_del.setFixedWidth(70)
+                btn_del.setFixedWidth(55)
                 btn_del.clicked.connect(lambda _, cid=customer.id: self._confirm_delete(cid))
                 actions_layout.addWidget(btn_del)
 
