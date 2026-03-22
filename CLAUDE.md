@@ -98,28 +98,35 @@ If the user says anything like "we're done for today", "let's stop here", "that'
 - Built `_DatePickerButton` custom calendar popup in `ui/screens/add_customer_screen.py`:
   - Fully LTR-forced to avoid RTL corruption in Hebrew layout
   - Custom nav bar: month dropdown + year dropdown (1920–today) + ◀▶ buttons
-  - Built-in calendar hidden nav, max date = today, default = 30 years ago
-  - Popup positioned at button's bottom-left edge
+  - Calendar hidden native nav bar, max date = today, default = 30 years ago
+  - Popup clamped within screen bounds via `QApplication.primaryScreen().availableGeometry()`
 - Added address + DOB fields to the Add/Edit Customer form (row 4, side by side)
+- Fixed all code review findings from the session:
+  - `db.py`: replaced `__import__("sqlalchemy")` with proper `from sqlalchemy import text`
+  - Added 4 new tests for `address` and `date_of_birth` in `test_customer_controller.py`
+  - Added `tests/test_db_migration.py` — integration tests for `_migrate()` (idempotency + column creation)
+  - Fixed calendar popup off-screen positioning
+- All 46 tests passing
 
 **Key files:**
 - `ui/screens/add_customer_screen.py` — `_DatePickerButton` (line 75), form (line 241)
 - `database/models.py` — Customer model (line 34)
 - `database/db.py` — migration (line 18)
 - `controllers/customer_controller.py` — create/update (line 52, 90)
+- `tests/test_customer_controller.py` — address/DOB tests at bottom of file
+- `tests/test_db_migration.py` — migration integration tests (new file)
 
 **Next steps:**
-1. Add tests for `address` and `date_of_birth` in `tests/test_customer_controller.py`
-2. Wire up authentication — login screen exists (`ui/screens/login_screen.py`) but auth backend not connected
-3. Build User Management screen (Manager creates/edits users)
-4. Build Permissions UI (Manager toggles feature access per user)
-5. Fix `__import__("sqlalchemy")` in `db.py:32` — import `text` from sqlalchemy at top of file
+1. Wire up authentication — login screen exists (`ui/screens/login_screen.py`) but auth backend not connected
+2. Build User Management screen (Manager creates/edits users)
+3. Build Permissions UI (Manager toggles feature access per user)
+4. Verify `updated_at` fires correctly on partial updates in SQLite (SQLAlchemy `onupdate` hook)
 
 **Open questions / blockers:**
-- Calendar popup may render off-screen if DOB field is near the bottom of the window — no bounds checking yet
-- `updated_at` relies on SQLAlchemy's `onupdate` hook; verify this fires correctly for partial updates in SQLite
+- Auth flow not decided: should login be required on every app launch, or only for certain roles?
+- `updated_at` relies on SQLAlchemy's `onupdate` hook — not yet verified under SQLite
 
 **Important context:**
-- The DB migration in `_migrate()` uses hardcoded column names in an f-string — not a real injection risk since values are literals, but looks like one
-- Tests use in-memory SQLite (`conftest.py`) — `_migrate()` is NOT called in tests, so migration logic itself is untested
 - Calendar is built as a `QDialog` with `Popup | FramelessWindowHint` flags; on some macOS window managers it may flicker — tested okay on dev machine
+- Migration in `_migrate()` uses hardcoded f-string column names — not an injection risk, but looks like one at first glance
+- Tests use in-memory SQLite via `conftest.py` — migration tests are in a separate file (`test_db_migration.py`) with their own bare-engine fixture
