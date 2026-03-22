@@ -170,6 +170,7 @@ class _DatePickerButton(QPushButton):
             year_combo = QComboBox(year_spin.parent())
             year_combo.setMaxVisibleItems(10)
             year_combo.setFixedHeight(year_spin.height())
+            year_combo.setEditable(False)
             year_combo.setStyleSheet("""
                 QComboBox {
                     border: 1px solid #ccc; border-radius: 3px;
@@ -180,12 +181,13 @@ class _DatePickerButton(QPushButton):
                 QComboBox QAbstractItemView {
                     background: white; color: #2c3e50;
                     selection-background-color: #3498db; selection-color: white;
-                    font-size: 13px;
+                    font-size: 13px; max-height: 200px;
                 }
             """)
             for y in range(current_year, 1919, -1):
                 year_combo.addItem(str(y), y)
             year_combo.setCurrentText(str(default.year()))
+            year_combo.view().setFixedHeight(10 * 22)   # 10 rows × 22px
 
             nav_layout = year_spin.parent().layout()
             if nav_layout:
@@ -193,6 +195,8 @@ class _DatePickerButton(QPushButton):
                     if nav_layout.itemAt(i).widget() == year_spin:
                         nav_layout.insertWidget(i, year_combo)
                         break
+            # Fully collapse the spinbox so it takes no space
+            year_spin.setFixedSize(0, 0)
             year_spin.hide()
 
             def on_year_combo_changed(idx):
