@@ -49,9 +49,13 @@ COMBO_STYLE = """
         border: none;
     }
     QComboBox QAbstractItemView {
-        border: 1px solid #ccc;
-        background: white;
-        selection-background-color: #d6eaf8;
+        background-color: #ffffff;
+        color: #2c3e50;
+        border: 1px solid #dce1e7;
+        border-radius: 4px;
+        padding: 4px;
+        selection-background-color: #eaf4fb;
+        selection-color: #2980b9;
         font-size: 13px;
     }
 """

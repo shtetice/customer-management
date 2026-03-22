@@ -112,11 +112,40 @@ QLineEdit, QTextEdit, QComboBox {
     border-radius: 4px;
     padding: 6px 10px;
     background-color: white;
+    color: #2c3e50;
     font-size: 13px;
 }
 
 QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
     border-color: #3498db;
+}
+
+/* Dropdown popup — subtle light style */
+QComboBox QAbstractItemView {
+    background-color: #ffffff;
+    color: #2c3e50;
+    border: 1px solid #dce1e7;
+    border-radius: 4px;
+    padding: 4px;
+    outline: none;
+    selection-background-color: #eaf4fb;
+    selection-color: #2c3e50;
+}
+
+QComboBox QAbstractItemView::item {
+    padding: 7px 12px;
+    border-radius: 3px;
+    min-height: 28px;
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: #f0f7fd;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #eaf4fb;
+    color: #2980b9;
+    font-weight: bold;
 }
 
 /* Status badges */
@@ -143,6 +172,6 @@ STATUS_COLORS = {
 STATUS_LABELS = {
     "lead":      "ליד",
     "customer":  "לקוח",
-    "retention": "Retention",
+    "retention": "שימור",
     "vip":       "VIP",
 }
