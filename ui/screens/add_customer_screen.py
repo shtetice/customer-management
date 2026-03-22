@@ -135,13 +135,13 @@ class AddCustomerScreen(QWidget):
 
         # Phone numbers section
         phones_col = QVBoxLayout()
-        phones_col.setSpacing(6)
+        phones_col.setSpacing(4)
         phones_col.addWidget(self._label("טלפון"))
 
         self.phone_inputs = []
 
         self._phones_container = QVBoxLayout()
-        self._phones_container.setSpacing(6)
+        self._phones_container.setSpacing(4)
 
         self.phone_input = self._make_phone_input("050-0000000")
         self._phones_container.addWidget(self.phone_input)
@@ -156,14 +156,18 @@ class AddCustomerScreen(QWidget):
                 color: #3498db;
                 border: none;
                 font-size: 12px;
-                text-align: right;
-                padding: 2px 0;
+                padding: 0;
             }
             QPushButton:hover { color: #2980b9; }
         """)
-        self._btn_add_phone.setFixedHeight(24)
+        self._btn_add_phone.setFixedHeight(20)
         self._btn_add_phone.clicked.connect(self._add_phone_field)
-        phones_col.addWidget(self._btn_add_phone)
+
+        btn_row = QHBoxLayout()
+        btn_row.setContentsMargins(0, 2, 0, 0)
+        btn_row.addStretch()
+        btn_row.addWidget(self._btn_add_phone)
+        phones_col.addLayout(btn_row)
 
         # Row 2: phones + email side by side
         row2 = QHBoxLayout()
