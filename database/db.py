@@ -21,10 +21,15 @@ def _migrate():
         existing = [row[1] for row in conn.execute(
             __import__("sqlalchemy").text("PRAGMA table_info(customers)")
         )]
-        for col in ("phone2", "phone3"):
+        for col, typedef in [
+            ("phone2",        "VARCHAR(30)"),
+            ("phone3",        "VARCHAR(30)"),
+            ("address",       "VARCHAR(300)"),
+            ("date_of_birth", "DATE"),
+        ]:
             if col not in existing:
                 conn.execute(__import__("sqlalchemy").text(
-                    f"ALTER TABLE customers ADD COLUMN {col} VARCHAR(30)"
+                    f"ALTER TABLE customers ADD COLUMN {col} {typedef}"
                 ))
         conn.commit()
 

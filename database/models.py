@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Text, DateTime, Enum, ForeignKey,
+    Column, Integer, String, Text, DateTime, Date, Enum, ForeignKey,
     Boolean, Table
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -42,6 +42,8 @@ class Customer(Base):
     phone2 = Column(String(30), nullable=True)
     phone3 = Column(String(30), nullable=True)
     email = Column(String(150), nullable=True)
+    address = Column(String(300), nullable=True)
+    date_of_birth = Column(Date, nullable=True)
     status = Column(Enum(CustomerStatus), nullable=False, default=CustomerStatus.LEAD)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

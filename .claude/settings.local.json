@@ -12,7 +12,11 @@
       "Bash(/Users/tzahmalka/.pyenv/versions/3.11.9/bin/python3 -m venv venv)",
       "Bash(venv/bin/python -m pytest tests/ -v)",
       "Bash(venv/bin/python -m pytest tests/ -q)",
-      "Bash(sqlite3 customer_management.db \"SELECT id, name, surname, phone, phone2, phone3, email, status FROM customers;\")"
+      "Bash(sqlite3 customer_management.db \"SELECT id, name, surname, phone, phone2, phone3, email, status FROM customers;\")",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(python3 -m pytest tests/ -q)",
+      "Bash(~/.pyenv/shims/python -m pytest tests/ -q)",
+      "Bash(source venv/bin/activate)"
     ]
   }
 }

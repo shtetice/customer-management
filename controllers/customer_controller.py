@@ -1,3 +1,4 @@
+from datetime import date
 from sqlalchemy.orm import Session
 from database.db import get_session
 from database.models import Customer, CustomerStatus, Gender
@@ -59,6 +60,8 @@ class CustomerController:
         email: str,
         status: CustomerStatus,
         notes: str,
+        address: str = "",
+        date_of_birth: date | None = None,
     ) -> Customer:
         self._validate(name, surname, email)
         session = get_session()
@@ -73,6 +76,8 @@ class CustomerController:
                 email=email.strip().lower() if email else None,
                 status=status,
                 notes=notes.strip() if notes else None,
+                address=address.strip() if address else None,
+                date_of_birth=date_of_birth,
             )
             session.add(customer)
             session.commit()
@@ -94,6 +99,8 @@ class CustomerController:
         email: str,
         status: CustomerStatus,
         notes: str,
+        address: str = "",
+        date_of_birth: date | None = None,
     ) -> Customer:
         self._validate(name, surname, email)
         session = get_session()
@@ -110,6 +117,8 @@ class CustomerController:
             customer.email = email.strip().lower() if email else None
             customer.status = status
             customer.notes = notes.strip() if notes else None
+            customer.address = address.strip() if address else None
+            customer.date_of_birth = date_of_birth
             session.commit()
             session.refresh(customer)
             session.expunge(customer)
