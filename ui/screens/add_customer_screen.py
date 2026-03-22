@@ -133,20 +133,25 @@ class AddCustomerScreen(QWidget):
 
         form_layout.addLayout(row1)
 
-        # Phone numbers section
-        phones_col = QVBoxLayout()
+        # Row 2: phones + email side by side — both top-aligned via QWidget wrappers
+        row2 = QHBoxLayout()
+        row2.setSpacing(16)
+        row2.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        # Phone column widget
+        phones_widget = QWidget()
+        phones_widget.setStyleSheet("background: transparent;")
+        phones_col = QVBoxLayout(phones_widget)
         phones_col.setSpacing(4)
+        phones_col.setContentsMargins(0, 0, 0, 0)
         phones_col.addWidget(self._label("טלפון"))
 
         self.phone_inputs = []
-
         self._phones_container = QVBoxLayout()
         self._phones_container.setSpacing(4)
-
         self.phone_input = self._make_phone_input("050-0000000")
         self._phones_container.addWidget(self.phone_input)
         self.phone_inputs.append(self.phone_input)
-
         phones_col.addLayout(self._phones_container)
 
         self._btn_add_phone = QPushButton("+ הוסף מספר טלפון")
@@ -160,30 +165,30 @@ class AddCustomerScreen(QWidget):
             }
             QPushButton:hover { color: #2980b9; }
         """)
-        self._btn_add_phone.setFixedHeight(20)
+        self._btn_add_phone.setFixedHeight(18)
         self._btn_add_phone.clicked.connect(self._add_phone_field)
-
         btn_row = QHBoxLayout()
-        btn_row.setContentsMargins(0, 2, 0, 0)
+        btn_row.setContentsMargins(0, 1, 0, 0)
         btn_row.addWidget(self._btn_add_phone)
         btn_row.addStretch()
         phones_col.addLayout(btn_row)
 
-        # Row 2: phones + email side by side
-        row2 = QHBoxLayout()
-        row2.setSpacing(16)
-        row2.addLayout(phones_col)
+        row2.addWidget(phones_widget, alignment=Qt.AlignmentFlag.AlignTop)
 
-        email_col = QVBoxLayout()
+        # Email column widget
+        email_widget = QWidget()
+        email_widget.setStyleSheet("background: transparent;")
+        email_col = QVBoxLayout(email_widget)
         email_col.setSpacing(4)
+        email_col.setContentsMargins(0, 0, 0, 0)
         email_col.addWidget(self._label("אימייל"))
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("example@email.com")
         self.email_input.setMinimumHeight(36)
         self.email_input.setStyleSheet(FIELD_STYLE)
         email_col.addWidget(self.email_input)
-        email_col.addStretch()
-        row2.addLayout(email_col)
+
+        row2.addWidget(email_widget, alignment=Qt.AlignmentFlag.AlignTop)
 
         form_layout.addLayout(row2)
 
