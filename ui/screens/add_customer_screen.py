@@ -115,10 +115,40 @@ class _DatePickerButton(QPushButton):
         dlg = QDialog(self.window())
         dlg.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
         dlg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-        dlg.setStyleSheet("QDialog { border: 1px solid #ccc; border-radius: 6px; }")
+        dlg.setStyleSheet("QDialog { border: 1px solid #ccc; background: white; }")
 
         layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(4)
+
+        # Year dropdown row
+        current_year = QDate.currentDate().year()
+        default = (
+            QDate(self._date.year, self._date.month, self._date.day)
+            if self._date
+            else QDate(current_year - 30, 1, 1)
+        )
+
+        year_combo = QComboBox()
+        year_combo.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        year_combo.setFixedHeight(28)
+        year_combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #ccc; border-radius: 4px;
+                padding: 3px 8px; font-size: 13px;
+                background: white; color: #2c3e50;
+            }
+            QComboBox::drop-down { border: none; width: 20px; }
+            QComboBox QAbstractItemView {
+                background: white; color: #2c3e50;
+                selection-background-color: #3498db; selection-color: white;
+                font-size: 13px;
+            }
+        """)
+        for y in range(current_year, 1919, -1):
+            year_combo.addItem(str(y), y)
+        year_combo.setCurrentText(str(default.year()))
+        layout.addWidget(year_combo)
 
         cal = QCalendarWidget()
         cal.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
@@ -126,11 +156,6 @@ class _DatePickerButton(QPushButton):
         cal.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         cal.setMinimumDate(QDate(1920, 1, 1))
         cal.setMaximumDate(QDate.currentDate())
-        default = (
-            QDate(self._date.year, self._date.month, self._date.day)
-            if self._date
-            else QDate(QDate.currentDate().year() - 30, 1, 1)
-        )
         cal.setSelectedDate(default)
         cal.setStyleSheet("""
             QCalendarWidget QWidget { font-size: 13px; }
@@ -151,25 +176,27 @@ class _DatePickerButton(QPushButton):
                 padding: 4px;
             }
             QCalendarWidget QMenu {
-                background-color: white;
-                color: #2c3e50;
-                border: 1px solid #ccc;
-                font-size: 13px;
+                background-color: white; color: #2c3e50;
+                border: 1px solid #ccc; font-size: 13px;
             }
             QCalendarWidget QMenu::item:selected {
-                background-color: #3498db;
-                color: white;
+                background-color: #3498db; color: white;
             }
-            QCalendarWidget QSpinBox {
-                color: #2c3e50;
-                background: white;
-                border: 1px solid #ccc;
-                border-radius: 3px;
-                padding: 2px 4px;
-                font-size: 13px;
-            }
+            QCalendarWidget QSpinBox { color: transparent; background: transparent; border: none; }
+            QCalendarWidget QSpinBox::up-button, QCalendarWidget QSpinBox::down-button { width: 0; }
         """)
         layout.addWidget(cal)
+
+        # Sync year combo → calendar
+        def on_year_combo_changed(idx):
+            year = year_combo.itemData(idx)
+            cal.setCurrentPage(year, cal.monthShown())
+        year_combo.currentIndexChanged.connect(on_year_combo_changed)
+
+        # Sync calendar navigation → year combo
+        def on_page_changed(year, _month):
+            year_combo.setCurrentText(str(year))
+        cal.currentPageChanged.connect(on_page_changed)
 
         pos = self.mapToGlobal(self.rect().bottomLeft())
         dlg.move(pos)
