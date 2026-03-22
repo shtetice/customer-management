@@ -87,6 +87,23 @@ class CustomerListScreen(QWidget):
             QComboBox:focus { border-color: #3498db; }
             QComboBox::drop-down { border: none; width: 24px; }
             QComboBox::down-arrow { width: 12px; height: 12px; }
+            QComboBox QAbstractItemView {
+                background-color: #ffffff;
+                color: #2c3e50;
+                border: 1px solid #b0b8c1;
+                outline: none;
+                selection-background-color: #3498db;
+                selection-color: #ffffff;
+                font-size: 13px;
+            }
+            QComboBox QAbstractItemView::item {
+                padding: 4px 8px;
+                min-height: 22px;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background-color: #3498db;
+                color: white;
+            }
         """)
         self.status_filter.addItem("כל הסטטוסים", None)
         for s in CustomerStatus:
