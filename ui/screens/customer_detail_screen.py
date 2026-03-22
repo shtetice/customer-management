@@ -174,7 +174,7 @@ class CustomerDetailScreen(QWidget):
 
             btn_del = QPushButton("מחק")
             btn_del.setObjectName("btn_danger")
-            btn_del.setFixedWidth(55)
+            btn_del.setFixedWidth(65)
             btn_del.clicked.connect(lambda _, tid=treatment_id: self._delete_treatment(tid))
             row.addWidget(btn_del)
 
@@ -266,7 +266,7 @@ class CustomerDetailScreen(QWidget):
 
             btn_del = QPushButton("מחק")
             btn_del.setObjectName("btn_danger")
-            btn_del.setFixedWidth(55)
+            btn_del.setFixedWidth(65)
             btn_del.clicked.connect(lambda _, rid=receipt_id: self._delete_receipt(rid))
             row.addWidget(btn_del)
 

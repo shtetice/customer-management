@@ -188,7 +188,7 @@ class CustomerListScreen(QWidget):
             if auth_service.has_permission("customers.delete"):
                 btn_del = QPushButton("מחק")
                 btn_del.setObjectName("btn_danger")
-                btn_del.setFixedWidth(55)
+                btn_del.setFixedWidth(65)
                 btn_del.clicked.connect(lambda _, cid=customer.id: self._confirm_delete(cid))
                 actions_layout.addWidget(btn_del)
 
