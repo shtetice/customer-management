@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QStyleFactory
 from PyQt6.QtCore import Qt
 
 from database.db import init_db, get_session
@@ -19,6 +19,7 @@ def open_main_window():
 
 def main():
     app = QApplication(sys.argv)
+    app.setStyle(QStyleFactory.create("Fusion"))
     app.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
     app.setStyleSheet(APP_STYLE)
 
