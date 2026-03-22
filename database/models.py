@@ -39,6 +39,8 @@ class Customer(Base):
     surname = Column(String(100), nullable=False)
     gender = Column(Enum(Gender), nullable=True)
     phone = Column(String(30), nullable=True)
+    phone2 = Column(String(30), nullable=True)
+    phone3 = Column(String(30), nullable=True)
     email = Column(String(150), nullable=True)
     status = Column(Enum(CustomerStatus), nullable=False, default=CustomerStatus.LEAD)
     notes = Column(Text, nullable=True)

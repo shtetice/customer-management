@@ -133,19 +133,42 @@ class AddCustomerScreen(QWidget):
 
         form_layout.addLayout(row1)
 
-        # Row 2: טלפון + אימייל side by side
+        # Phone numbers section
+        phones_col = QVBoxLayout()
+        phones_col.setSpacing(6)
+        phones_col.addWidget(self._label("טלפון"))
+
+        self.phone_inputs = []
+
+        self._phones_container = QVBoxLayout()
+        self._phones_container.setSpacing(6)
+
+        self.phone_input = self._make_phone_input("050-0000000")
+        self._phones_container.addWidget(self.phone_input)
+        self.phone_inputs.append(self.phone_input)
+
+        phones_col.addLayout(self._phones_container)
+
+        self._btn_add_phone = QPushButton("+ הוסף מספר טלפון")
+        self._btn_add_phone.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #3498db;
+                border: none;
+                font-size: 12px;
+                text-align: right;
+                padding: 2px 0;
+            }
+            QPushButton:hover { color: #2980b9; }
+        """)
+        self._btn_add_phone.setFixedHeight(24)
+        self._btn_add_phone.clicked.connect(self._add_phone_field)
+        phones_col.addWidget(self._btn_add_phone)
+
+        # Row 2: phones + email side by side
         row2 = QHBoxLayout()
         row2.setSpacing(16)
-
-        phone_col = QVBoxLayout()
-        phone_col.setSpacing(4)
-        phone_col.addWidget(self._label("טלפון"))
-        self.phone_input = QLineEdit()
-        self.phone_input.setPlaceholderText("050-0000000")
-        self.phone_input.setMinimumHeight(36)
-        self.phone_input.setStyleSheet(FIELD_STYLE)
-        phone_col.addWidget(self.phone_input)
-        row2.addLayout(phone_col)
+        row2.addLayout(phones_col)
 
         email_col = QVBoxLayout()
         email_col.setSpacing(4)
@@ -155,6 +178,7 @@ class AddCustomerScreen(QWidget):
         self.email_input.setMinimumHeight(36)
         self.email_input.setStyleSheet(FIELD_STYLE)
         email_col.addWidget(self.email_input)
+        email_col.addStretch()
         row2.addLayout(email_col)
 
         form_layout.addLayout(row2)
@@ -248,6 +272,22 @@ class AddCustomerScreen(QWidget):
 
         outer.addLayout(btn_row)
 
+    def _make_phone_input(self, placeholder: str = "050-0000000") -> QLineEdit:
+        inp = QLineEdit()
+        inp.setPlaceholderText(placeholder)
+        inp.setMinimumHeight(36)
+        inp.setStyleSheet(FIELD_STYLE)
+        return inp
+
+    def _add_phone_field(self):
+        if len(self.phone_inputs) >= 3:
+            return
+        inp = self._make_phone_input()
+        self._phones_container.addWidget(inp)
+        self.phone_inputs.append(inp)
+        if len(self.phone_inputs) >= 3:
+            self._btn_add_phone.setVisible(False)
+
     def _label(self, text: str) -> QLabel:
         lbl = QLabel(text)
         lbl.setStyleSheet(LABEL_STYLE)
@@ -262,7 +302,11 @@ class AddCustomerScreen(QWidget):
 
         self.name_input.setText(customer.name)
         self.surname_input.setText(customer.surname)
-        self.phone_input.setText(customer.phone or "")
+        self.phone_inputs[0].setText(customer.phone or "")
+        for extra in [customer.phone2, customer.phone3]:
+            if extra:
+                self._add_phone_field()
+                self.phone_inputs[-1].setText(extra)
         self.email_input.setText(customer.email or "")
         self.notes_input.setPlainText(customer.notes or "")
 
@@ -279,7 +323,10 @@ class AddCustomerScreen(QWidget):
     def _on_save(self):
         name = self.name_input.text().strip()
         surname = self.surname_input.text().strip()
-        phone = self.phone_input.text().strip()
+        phones = [inp.text().strip() for inp in self.phone_inputs]
+        phone  = phones[0] if len(phones) > 0 else ""
+        phone2 = phones[1] if len(phones) > 1 else ""
+        phone3 = phones[2] if len(phones) > 2 else ""
         email = self.email_input.text().strip()
         gender = self.gender_combo.currentData()
         status = self.status_combo.currentData()
@@ -288,10 +335,13 @@ class AddCustomerScreen(QWidget):
         try:
             if self._customer_id:
                 customer_controller.update(
-                    self._customer_id, name, surname, gender, phone, email, status, notes
+                    self._customer_id, name, surname, gender,
+                    phone, phone2, phone3, email, status, notes
                 )
             else:
-                customer_controller.create(name, surname, gender, phone, email, status, notes)
+                customer_controller.create(
+                    name, surname, gender, phone, phone2, phone3, email, status, notes
+                )
 
             self.error_label.setText("")
             self.customer_saved.emit()

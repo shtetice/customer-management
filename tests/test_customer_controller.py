@@ -8,72 +8,91 @@ def ctrl():
     return CustomerController()
 
 
+def _create(ctrl, name="יוסי", surname="כהן", gender=Gender.MALE,
+            phone="050-1234567", phone2="", phone3="",
+            email="yossi@test.com", status=CustomerStatus.LEAD, notes=""):
+    return ctrl.create(name, surname, gender, phone, phone2, phone3, email, status, notes)
+
+
 def test_create_customer_success(ctrl):
-    c = ctrl.create("יוסי", "כהן", Gender.MALE, "050-1234567", "yossi@test.com", CustomerStatus.LEAD, "")
+    c = _create(ctrl)
     assert c.id is not None
     assert c.name == "יוסי"
     assert c.surname == "כהן"
     assert c.status == CustomerStatus.LEAD
 
 
+def test_create_customer_multiple_phones(ctrl):
+    c = ctrl.create("אנה", "לוי", None, "050-1111111", "052-2222222", "054-3333333",
+                    "", CustomerStatus.LEAD, "")
+    assert c.phone == "050-1111111"
+    assert c.phone2 == "052-2222222"
+    assert c.phone3 == "054-3333333"
+
+
 def test_create_customer_missing_name_raises(ctrl):
     with pytest.raises(ValueError, match="שם"):
-        ctrl.create("", "כהן", None, "", "", CustomerStatus.LEAD, "")
+        ctrl.create("", "כהן", None, "", "", "", "", CustomerStatus.LEAD, "")
 
 
 def test_create_customer_missing_surname_raises(ctrl):
     with pytest.raises(ValueError, match="שם משפחה"):
-        ctrl.create("יוסי", "", None, "", "", CustomerStatus.LEAD, "")
+        ctrl.create("יוסי", "", None, "", "", "", "", CustomerStatus.LEAD, "")
 
 
 def test_create_customer_invalid_email_raises(ctrl):
     with pytest.raises(ValueError, match="אימייל"):
-        ctrl.create("יוסי", "כהן", None, "", "not-an-email", CustomerStatus.LEAD, "")
+        ctrl.create("יוסי", "כהן", None, "", "", "", "not-an-email", CustomerStatus.LEAD, "")
 
 
 def test_get_all_returns_customers(ctrl):
-    ctrl.create("אנה", "לוי", Gender.FEMALE, "", "", CustomerStatus.CUSTOMER, "")
-    ctrl.create("דני", "מזרחי", Gender.MALE, "", "", CustomerStatus.VIP, "")
-    all_customers = ctrl.get_all()
-    assert len(all_customers) == 2
+    _create(ctrl, name="אנה", surname="לוי", gender=Gender.FEMALE, status=CustomerStatus.CUSTOMER)
+    _create(ctrl, name="דני", surname="מזרחי", gender=Gender.MALE, status=CustomerStatus.VIP)
+    assert len(ctrl.get_all()) == 2
 
 
 def test_get_all_filtered_by_status(ctrl):
-    ctrl.create("אנה", "לוי", None, "", "", CustomerStatus.LEAD, "")
-    ctrl.create("דני", "מזרחי", None, "", "", CustomerStatus.VIP, "")
+    _create(ctrl, name="אנה", surname="לוי", status=CustomerStatus.LEAD)
+    _create(ctrl, name="דני", surname="מזרחי", status=CustomerStatus.VIP)
     leads = ctrl.get_all(status=CustomerStatus.LEAD)
     assert len(leads) == 1
     assert leads[0].name == "אנה"
 
 
 def test_search_by_name(ctrl):
-    ctrl.create("אנה", "לוי", None, "", "", CustomerStatus.LEAD, "")
-    ctrl.create("דני", "מזרחי", None, "", "", CustomerStatus.CUSTOMER, "")
+    _create(ctrl, name="אנה", surname="לוי", status=CustomerStatus.LEAD)
+    _create(ctrl, name="דני", surname="מזרחי", status=CustomerStatus.CUSTOMER)
     results = ctrl.search("אנה")
     assert len(results) == 1
     assert results[0].name == "אנה"
 
 
 def test_search_by_phone(ctrl):
-    ctrl.create("אנה", "לוי", None, "054-9999999", "", CustomerStatus.LEAD, "")
-    results = ctrl.search("054-9999")
-    assert len(results) == 1
+    ctrl.create("אנה", "לוי", None, "054-9999999", "", "", "", CustomerStatus.LEAD, "")
+    assert len(ctrl.search("054-9999")) == 1
+
+
+def test_search_by_phone2(ctrl):
+    ctrl.create("אנה", "לוי", None, "050-1111111", "052-8888888", "", "", CustomerStatus.LEAD, "")
+    assert len(ctrl.search("052-8888")) == 1
 
 
 def test_update_customer(ctrl):
-    c = ctrl.create("אנה", "לוי", None, "", "", CustomerStatus.LEAD, "")
-    updated = ctrl.update(c.id, "אנה", "לוי", None, "050-000", "", CustomerStatus.CUSTOMER, "הערה")
+    c = _create(ctrl, name="אנה", surname="לוי", status=CustomerStatus.LEAD)
+    updated = ctrl.update(c.id, "אנה", "לוי", None, "050-000", "052-111", "",
+                          "", CustomerStatus.CUSTOMER, "הערה")
     assert updated.phone == "050-000"
+    assert updated.phone2 == "052-111"
     assert updated.status == CustomerStatus.CUSTOMER
 
 
 def test_update_nonexistent_customer_raises(ctrl):
     with pytest.raises(ValueError, match="לא נמצא"):
-        ctrl.update(9999, "א", "ב", None, "", "", CustomerStatus.LEAD, "")
+        ctrl.update(9999, "א", "ב", None, "", "", "", "", CustomerStatus.LEAD, "")
 
 
 def test_delete_customer(ctrl):
-    c = ctrl.create("אנה", "לוי", None, "", "", CustomerStatus.LEAD, "")
+    c = _create(ctrl)
     ctrl.delete(c.id)
     assert ctrl.get_by_id(c.id) is None
 

@@ -6,7 +6,6 @@ from database.models import Customer, CustomerStatus, Gender
 class CustomerController:
 
     def get_all(self, status: CustomerStatus | None = None) -> list[Customer]:
-        """Return all customers, optionally filtered by status."""
         session = get_session()
         try:
             q = session.query(Customer)
@@ -30,7 +29,6 @@ class CustomerController:
             session.close()
 
     def search(self, query: str) -> list[Customer]:
-        """Search by name, surname, phone, or email."""
         if not query or not query.strip():
             return self.get_all()
         session = get_session()
@@ -40,6 +38,8 @@ class CustomerController:
                 Customer.name.ilike(q) |
                 Customer.surname.ilike(q) |
                 Customer.phone.ilike(q) |
+                Customer.phone2.ilike(q) |
+                Customer.phone3.ilike(q) |
                 Customer.email.ilike(q)
             ).order_by(Customer.surname, Customer.name).all()
             for c in customers:
@@ -54,11 +54,13 @@ class CustomerController:
         surname: str,
         gender: Gender | None,
         phone: str,
+        phone2: str,
+        phone3: str,
         email: str,
         status: CustomerStatus,
         notes: str,
     ) -> Customer:
-        self._validate(name, surname, phone, email)
+        self._validate(name, surname, email)
         session = get_session()
         try:
             customer = Customer(
@@ -66,6 +68,8 @@ class CustomerController:
                 surname=surname.strip(),
                 gender=gender,
                 phone=phone.strip() if phone else None,
+                phone2=phone2.strip() if phone2 else None,
+                phone3=phone3.strip() if phone3 else None,
                 email=email.strip().lower() if email else None,
                 status=status,
                 notes=notes.strip() if notes else None,
@@ -85,11 +89,13 @@ class CustomerController:
         surname: str,
         gender: Gender | None,
         phone: str,
+        phone2: str,
+        phone3: str,
         email: str,
         status: CustomerStatus,
         notes: str,
     ) -> Customer:
-        self._validate(name, surname, phone, email)
+        self._validate(name, surname, email)
         session = get_session()
         try:
             customer = session.query(Customer).filter_by(id=customer_id).first()
@@ -99,6 +105,8 @@ class CustomerController:
             customer.surname = surname.strip()
             customer.gender = gender
             customer.phone = phone.strip() if phone else None
+            customer.phone2 = phone2.strip() if phone2 else None
+            customer.phone3 = phone3.strip() if phone3 else None
             customer.email = email.strip().lower() if email else None
             customer.status = status
             customer.notes = notes.strip() if notes else None
@@ -120,7 +128,7 @@ class CustomerController:
         finally:
             session.close()
 
-    def _validate(self, name: str, surname: str, phone: str, email: str):
+    def _validate(self, name: str, surname: str, email: str):
         if not name or not name.strip():
             raise ValueError("שם הוא שדה חובה")
         if not surname or not surname.strip():

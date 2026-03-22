@@ -9,9 +9,24 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
 def init_db():
-    """Create all tables and seed default features."""
+    """Create all tables, run migrations, and seed default features."""
     Base.metadata.create_all(bind=engine)
+    _migrate()
     _seed_features()
+
+
+def _migrate():
+    """Add new columns to existing tables if they don't exist yet."""
+    with engine.connect() as conn:
+        existing = [row[1] for row in conn.execute(
+            __import__("sqlalchemy").text("PRAGMA table_info(customers)")
+        )]
+        for col in ("phone2", "phone3"):
+            if col not in existing:
+                conn.execute(__import__("sqlalchemy").text(
+                    f"ALTER TABLE customers ADD COLUMN {col} VARCHAR(30)"
+                ))
+        conn.commit()
 
 
 def get_session() -> Session:

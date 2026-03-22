@@ -149,7 +149,8 @@ class CustomerListScreen(QWidget):
 
             self.table.setItem(row_idx, 0, self._cell(customer.name))
             self.table.setItem(row_idx, 1, self._cell(customer.surname))
-            self.table.setItem(row_idx, 2, self._cell(customer.phone or ""))
+            phones = [p for p in [customer.phone, customer.phone2, customer.phone3] if p]
+            self.table.setItem(row_idx, 2, self._cell(" | ".join(phones)))
             self.table.setItem(row_idx, 3, self._cell(customer.email or ""))
 
             # Status badge cell
