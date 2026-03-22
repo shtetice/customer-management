@@ -126,10 +126,12 @@ class _DatePickerButton(QPushButton):
         cal.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         cal.setMinimumDate(QDate(1920, 1, 1))
         cal.setMaximumDate(QDate.currentDate())
-        cal.setSelectedDate(
+        default = (
             QDate(self._date.year, self._date.month, self._date.day)
-            if self._date else QDate.currentDate()
+            if self._date
+            else QDate(QDate.currentDate().year() - 30, 1, 1)
         )
+        cal.setSelectedDate(default)
         cal.setStyleSheet("""
             QCalendarWidget QWidget { font-size: 13px; }
             QCalendarWidget QAbstractItemView:enabled {
