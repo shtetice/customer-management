@@ -123,7 +123,8 @@ class CustomerListScreen(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
+        self.table.setColumnWidth(5, 150)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -170,14 +171,14 @@ class CustomerListScreen(QWidget):
 
             if auth_service.has_permission("customers.edit"):
                 btn_edit = QPushButton("עריכה")
-                btn_edit.setFixedWidth(60)
+                btn_edit.setFixedWidth(70)
                 btn_edit.clicked.connect(lambda _, cid=customer.id: self.request_edit_customer.emit(cid))
                 actions_layout.addWidget(btn_edit)
 
             if auth_service.has_permission("customers.delete"):
                 btn_del = QPushButton("מחק")
                 btn_del.setObjectName("btn_danger")
-                btn_del.setFixedWidth(60)
+                btn_del.setFixedWidth(70)
                 btn_del.clicked.connect(lambda _, cid=customer.id: self._confirm_delete(cid))
                 actions_layout.addWidget(btn_del)
 
