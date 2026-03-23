@@ -113,7 +113,7 @@ class _DatePickerButton(QPushButton):
 
     def _open_calendar(self):
         dlg = QDialog(self.window())
-        dlg.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        dlg.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         dlg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         dlg.setStyleSheet("QDialog { border: 1px solid #ccc; background: white; }")
 
