@@ -125,7 +125,7 @@ class CustomerListScreen(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(5, 55)
+        self.table.setColumnWidth(5, 110)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -174,15 +174,16 @@ class CustomerListScreen(QWidget):
             actions_layout.setContentsMargins(8, 4, 8, 4)
             actions_layout.addStretch()
 
-            btn_menu = QPushButton("⋮")
-            btn_menu.setFixedSize(30, 30)
+            btn_menu = QPushButton("פעולות ▾")
+            btn_menu.setFixedHeight(28)
+            btn_menu.setMinimumWidth(80)
             btn_menu.setStyleSheet("""
                 QPushButton {
-                    background: #f0f0f0; color: #2c3e50;
-                    border: 1px solid #ccc; border-radius: 6px;
-                    font-size: 18px; font-weight: bold;
+                    background: #f0f4f8; color: #2c3e50;
+                    border: 1px solid #bdc3c7; border-radius: 5px;
+                    font-size: 12px; padding: 0 8px;
                 }
-                QPushButton:hover { background: #dde; border-color: #aaa; }
+                QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
             """)
 
             def make_menu(cid=customer.id):
