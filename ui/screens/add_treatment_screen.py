@@ -1,15 +1,16 @@
-from datetime import datetime
+from datetime import datetime, date
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QTextEdit, QDateEdit, QMessageBox, QFrame
+    QPushButton, QTextEdit, QMessageBox, QFrame
 )
-from PyQt6.QtCore import Qt, QDate, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
 from controllers.treatment_controller import treatment_controller
+from ui.screens.add_customer_screen import _DatePickerButton
 
 FIELD_STYLE = """
-    QLineEdit, QTextEdit, QDateEdit {
+    QLineEdit, QTextEdit {
         border: 1px solid #ccc;
         border-radius: 5px;
         padding: 7px 10px;
@@ -17,7 +18,7 @@ FIELD_STYLE = """
         background: white;
         color: #2c3e50;
     }
-    QLineEdit:focus, QTextEdit:focus, QDateEdit:focus { border-color: #3498db; }
+    QLineEdit:focus, QTextEdit:focus { border-color: #3498db; }
 """
 LABEL_STYLE = "font-size: 13px; color: #555; margin-bottom: 2px;"
 
@@ -49,13 +50,9 @@ class AddTreatmentDialog(QDialog):
 
         # Date
         layout.addWidget(self._lbl("תאריך טיפול"))
-        self.date_edit = QDateEdit()
-        self.date_edit.setCalendarPopup(True)
-        self.date_edit.setDate(QDate.currentDate())
-        self.date_edit.setDisplayFormat("dd/MM/yyyy")
-        self.date_edit.setMinimumHeight(36)
-        self.date_edit.setStyleSheet(FIELD_STYLE)
-        layout.addWidget(self.date_edit)
+        self.date_picker = _DatePickerButton()
+        self.date_picker.set_date(date.today())
+        layout.addWidget(self.date_picker)
 
         # Description
         layout.addWidget(self._lbl("תיאור הטיפול *"))
@@ -119,22 +116,25 @@ class AddTreatmentDialog(QDialog):
         if not t:
             self.reject()
             return
-        self.date_edit.setDate(QDate(t.date.year, t.date.month, t.date.day))
+        self.date_picker.set_date(t.date.date())
         self.description_input.setText(t.description or "")
         self.performed_by_input.setText(t.performed_by or "")
         self.notes_input.setPlainText(t.notes or "")
 
     def _save(self):
-        qdate = self.date_edit.date()
-        date = datetime(qdate.year(), qdate.month(), qdate.day())
+        d = self.date_picker.get_date()
+        if not d:
+            self.error_label.setText("יש לבחור תאריך טיפול")
+            return
+        treatment_date = datetime(d.year, d.month, d.day)
         description = self.description_input.text().strip()
         performed_by = self.performed_by_input.text().strip()
         notes = self.notes_input.toPlainText().strip()
         try:
             if self._treatment_id:
-                treatment_controller.update(self._treatment_id, date, description, performed_by, notes)
+                treatment_controller.update(self._treatment_id, treatment_date, description, performed_by, notes)
             else:
-                treatment_controller.create(self._customer_id, date, description, performed_by, notes)
+                treatment_controller.create(self._customer_id, treatment_date, description, performed_by, notes)
             self.saved.emit()
             self.accept()
         except ValueError as e:
