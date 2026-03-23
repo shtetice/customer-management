@@ -95,8 +95,6 @@ QTableWidget {
 QTableWidget::item {
     padding: 6px 10px;
     text-align: right;
-    color: #2c3e50;
-    background-color: white;
 }
 
 QTableWidget::item:alternate {
