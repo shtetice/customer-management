@@ -1,10 +1,10 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QComboBox, QMessageBox, QAbstractItemView
+    QComboBox, QMessageBox, QAbstractItemView, QMenu
 )
+from PyQt6.QtGui import QColor, QFont, QBrush, QCursor
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QBrush
 
 from database.models import CustomerStatus
 from controllers.customer_controller import customer_controller
@@ -125,7 +125,7 @@ class CustomerListScreen(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(5, 100)
+        self.table.setColumnWidth(5, 55)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -168,44 +168,53 @@ class CustomerListScreen(QWidget):
             status_item.setFont(font)
             self.table.setItem(row_idx, 4, status_item)
 
-            # Action buttons — compact icon style
+            # Action dropdown
             actions_widget = QWidget()
             actions_layout = QHBoxLayout(actions_widget)
-            actions_layout.setContentsMargins(6, 4, 6, 4)
-            actions_layout.setSpacing(4)
+            actions_layout.setContentsMargins(8, 4, 8, 4)
             actions_layout.addStretch()
 
-            btn_view = QPushButton("👁")
-            btn_view.setFixedSize(28, 28)
-            btn_view.setToolTip("פרטים")
-            btn_view.setStyleSheet("""
-                QPushButton { background:#8e44ad; color:white; border:none; border-radius:4px; font-size:14px; }
-                QPushButton:hover { background:#7d3c98; }
+            btn_menu = QPushButton("⋮")
+            btn_menu.setFixedSize(30, 30)
+            btn_menu.setStyleSheet("""
+                QPushButton {
+                    background: #f0f0f0; color: #2c3e50;
+                    border: 1px solid #ccc; border-radius: 6px;
+                    font-size: 18px; font-weight: bold;
+                }
+                QPushButton:hover { background: #dde; border-color: #aaa; }
             """)
-            btn_view.clicked.connect(lambda _, cid=customer.id: self.request_view_customer.emit(cid))
-            actions_layout.addWidget(btn_view)
 
-            if auth_service.has_permission("customers.edit"):
-                btn_edit = QPushButton("✎")
-                btn_edit.setFixedSize(28, 28)
-                btn_edit.setToolTip("עריכה")
-                btn_edit.setStyleSheet("""
-                    QPushButton { background:#3498db; color:white; border:none; border-radius:4px; font-size:15px; }
-                    QPushButton:hover { background:#2980b9; }
+            def make_menu(cid=customer.id):
+                menu = QMenu(self)
+                menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+                menu.setStyleSheet("""
+                    QMenu {
+                        background: white; border: 1px solid #ddd;
+                        border-radius: 6px; padding: 4px;
+                        font-size: 13px;
+                    }
+                    QMenu::item {
+                        padding: 7px 20px; border-radius: 4px; color: #2c3e50;
+                    }
+                    QMenu::item:selected { background: #f0f4f8; }
+                    QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
                 """)
-                btn_edit.clicked.connect(lambda _, cid=customer.id: self.request_edit_customer.emit(cid))
-                actions_layout.addWidget(btn_edit)
+                menu.addAction("👁  פרטים", lambda: self.request_view_customer.emit(cid))
+                if auth_service.has_permission("customers.edit"):
+                    menu.addAction("✎  עריכה", lambda: self.request_edit_customer.emit(cid))
+                if auth_service.has_permission("customers.delete"):
+                    menu.addSeparator()
+                    delete_action = menu.addAction("✕  מחק", lambda: self._confirm_delete(cid))
+                    delete_action.setData("danger")
+                    font = delete_action.font()
+                    delete_action.setFont(font)
+                    # Style delete in red via a separate setStyleSheet is not supported per-item;
+                    # use font color via HTML workaround isn't available — keep it grouped at bottom
+                menu.exec(QCursor.pos())
 
-            if auth_service.has_permission("customers.delete"):
-                btn_del = QPushButton("✕")
-                btn_del.setFixedSize(28, 28)
-                btn_del.setToolTip("מחק")
-                btn_del.setStyleSheet("""
-                    QPushButton { background:#e74c3c; color:white; border:none; border-radius:4px; font-size:13px; font-weight:bold; }
-                    QPushButton:hover { background:#c0392b; }
-                """)
-                btn_del.clicked.connect(lambda _, cid=customer.id: self._confirm_delete(cid))
-                actions_layout.addWidget(btn_del)
+            btn_menu.clicked.connect(make_menu)
+            actions_layout.addWidget(btn_menu)
 
             self.table.setCellWidget(row_idx, 5, actions_widget)
             self.table.setRowHeight(row_idx, 44)
