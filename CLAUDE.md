@@ -89,44 +89,51 @@ If the user says anything like "we're done for today", "let's stop here", "that'
 ## Session Memory
 *Updated at the end of each working session.*
 
-**Last session:** 2026-03-22
+**Last session:** 2026-03-23
 
 **Completed today:**
-- Added `address` (String 300) and `date_of_birth` (Date) fields to `Customer` model (`database/models.py`)
-- Extended `db._migrate()` to ADD COLUMN for both new fields on existing databases (`database/db.py`)
-- Updated `CustomerController.create()` and `.update()` to accept and persist the new fields (`controllers/customer_controller.py`)
-- Built `_DatePickerButton` custom calendar popup in `ui/screens/add_customer_screen.py`:
-  - Fully LTR-forced to avoid RTL corruption in Hebrew layout
-  - Custom nav bar: month dropdown + year dropdown (1920–today) + ◀▶ buttons
-  - Calendar hidden native nav bar, max date = today, default = 30 years ago
-  - Popup clamped within screen bounds via `QApplication.primaryScreen().availableGeometry()`
-- Added address + DOB fields to the Add/Edit Customer form (row 4, side by side)
-- Fixed all code review findings from the session:
-  - `db.py`: replaced `__import__("sqlalchemy")` with proper `from sqlalchemy import text`
-  - Added 4 new tests for `address` and `date_of_birth` in `test_customer_controller.py`
-  - Added `tests/test_db_migration.py` — integration tests for `_migrate()` (idempotency + column creation)
-  - Fixed calendar popup off-screen positioning
+- Fixed login button invisible — card's `QWidget { background: white }` was overriding global QPushButton style (`ui/screens/login_screen.py`)
+- Status badges redesigned: bold colored `● text` items with per-status background tint instead of QLabel cell-widgets (`ui/screens/customer_list_screen.py`, `ui/styles.py`)
+  - Fixed root cause: removed `color`/`background-color` from `QTableWidget::item` in global stylesheet — these were silently overriding item data roles
+- Added `STATUS_BG_COLORS` dict to `ui/styles.py` (pastel tints per status)
+- Created `services/settings_service.py` — reads/writes `settings.json` at project root
+- Created `ui/screens/settings_screen.py` — settings UI with receipts folder picker
+- Added ⚙️ הגדרות nav button to sidebar (`ui/main_window.py`)
+- Receipt dialog (`ui/screens/add_receipt_screen.py`):
+  - Replaced `QDateEdit` with custom `_DatePickerButton`
+  - Added `customer_name` param
+  - Added green "שמור + ייצא קובץ" button — saves `.txt` receipt to configured folder
+- Calendar popup: added `WindowStaysOnTopHint` so it renders above modal dialogs
+- Status badge min-width fix (later superseded by full redesign)
+- Replaced all action button rows with single **"פעולות ▾"** dropdown (`QMenu`):
+  - Customer list: 👁 פרטים / ✎ עריכה / ✕ מחק (`ui/screens/customer_list_screen.py`)
+  - Treatment rows: + הוסף קבלה / ✎ עריכה / ✕ מחק (`ui/screens/customer_detail_screen.py`)
+  - Receipt rows: ✎ עריכה / ✕ מחק (`ui/screens/customer_detail_screen.py`)
+- Pre-approved `Bash(cd * && git *)` in `.claude/settings.local.json`
 - All 46 tests passing
 
 **Key files:**
-- `ui/screens/add_customer_screen.py` — `_DatePickerButton` (line 75), form (line 241)
-- `database/models.py` — Customer model (line 34)
-- `database/db.py` — migration (line 18)
-- `controllers/customer_controller.py` — create/update (line 52, 90)
-- `tests/test_customer_controller.py` — address/DOB tests at bottom of file
-- `tests/test_db_migration.py` — migration integration tests (new file)
+- `ui/screens/customer_list_screen.py` — status badges (line ~158), dropdown (line ~171)
+- `ui/screens/customer_detail_screen.py` — `_treatment_actions` (line ~155), `_receipt_actions` (line ~190)
+- `ui/screens/add_receipt_screen.py` — `_export_file` method, date picker, save buttons
+- `ui/screens/settings_screen.py` — new settings screen
+- `services/settings_service.py` — new settings persistence service
+- `ui/main_window.py` — settings nav button + `_show_settings()`
+- `ui/styles.py` — `STATUS_COLORS`, `STATUS_BG_COLORS`, `STATUS_LABELS`
 
 **Next steps:**
-1. Wire up authentication — login screen exists (`ui/screens/login_screen.py`) but auth backend not connected
-2. Build User Management screen (Manager creates/edits users)
+1. Wire up authentication — login screen exists but auth backend not connected to app launch flow
+2. Build User Management screen (Manager creates/edits/deactivates users)
 3. Build Permissions UI (Manager toggles feature access per user)
-4. Verify `updated_at` fires correctly on partial updates in SQLite (SQLAlchemy `onupdate` hook)
+4. Add more settings (e.g. clinic name for receipt header, default status for new customers)
+5. Verify `updated_at` fires correctly on partial updates in SQLite
 
 **Open questions / blockers:**
-- Auth flow not decided: should login be required on every app launch, or only for certain roles?
-- `updated_at` relies on SQLAlchemy's `onupdate` hook — not yet verified under SQLite
+- Auth flow: should login be required on every app launch, or persist session (already have session_service)?
+- Receipt file format: currently plain `.txt` — should it be PDF in the future?
 
 **Important context:**
-- Calendar is built as a `QDialog` with `Popup | FramelessWindowHint` flags; on some macOS window managers it may flicker — tested okay on dev machine
-- Migration in `_migrate()` uses hardcoded f-string column names — not an injection risk, but looks like one at first glance
-- Tests use in-memory SQLite via `conftest.py` — migration tests are in a separate file (`test_db_migration.py`) with their own bare-engine fixture
+- `_DatePickerButton` is defined in `add_customer_screen.py` and imported by both `add_treatment_screen.py` and `add_receipt_screen.py` — it's a shared widget living in a screen file (not ideal long-term, but works)
+- `QMenu` dropdown style is duplicated across `customer_list_screen.py` and `customer_detail_screen.py` — could be extracted to a helper if it diverges
+- `settings.json` is gitignored-by-convention (not in .gitignore yet) — contains local folder paths, should not be committed
+- Global `QTableWidget::item` stylesheet must NOT set `color` or `background-color` — doing so overrides all item data roles silently
