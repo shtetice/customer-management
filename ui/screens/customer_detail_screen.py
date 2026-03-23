@@ -12,7 +12,7 @@ from controllers.receipt_controller import receipt_controller
 from services.auth_service import auth_service
 from ui.screens.add_treatment_screen import AddTreatmentDialog
 from ui.screens.add_receipt_screen import AddReceiptDialog
-from ui.styles import STATUS_LABELS
+from ui.styles import STATUS_LABELS, STATUS_COLORS
 
 
 class CustomerDetailScreen(QWidget):
@@ -101,8 +101,7 @@ class CustomerDetailScreen(QWidget):
         self._name_label.setText(f"{c.name} {c.surname}")
         self._customer_name = f"{c.name} {c.surname}"
         status_text = STATUS_LABELS.get(c.status.value, c.status.value)
-        colors = {"lead": "#f39c12", "customer": "#27ae60", "retention": "#8e44ad", "vip": "#c0392b"}
-        color = colors.get(c.status.value, "#999")
+        color = STATUS_COLORS.get(c.status.value, "#999")
         self._status_label.setText(status_text)
         self._status_label.setStyleSheet(
             f"color:white; background:{color}; border-radius:10px; "

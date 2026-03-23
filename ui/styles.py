@@ -166,10 +166,17 @@ QLineEdit#search_bar {
 """
 
 STATUS_COLORS = {
-    "lead":      "#f39c12",
+    "lead":      "#e67e22",
     "customer":  "#27ae60",
     "retention": "#8e44ad",
     "vip":       "#c0392b",
+}
+
+STATUS_BG_COLORS = {
+    "lead":      "#fef0e0",
+    "customer":  "#e9f7ef",
+    "retention": "#f4ecf7",
+    "vip":       "#fdedec",
 }
 
 STATUS_LABELS = {

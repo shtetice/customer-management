@@ -9,7 +9,7 @@ from PyQt6.QtGui import QColor, QFont, QBrush
 from database.models import CustomerStatus
 from controllers.customer_controller import customer_controller
 from services.auth_service import auth_service
-from ui.styles import STATUS_COLORS, STATUS_LABELS
+from ui.styles import STATUS_COLORS, STATUS_BG_COLORS, STATUS_LABELS
 
 
 class CustomerListScreen(QWidget):
@@ -160,7 +160,9 @@ class CustomerListScreen(QWidget):
             status_item = QTableWidgetItem(status_text)
             status_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             color_hex = STATUS_COLORS.get(customer.status.value, "#999")
+            bg_hex = STATUS_BG_COLORS.get(customer.status.value, "#f5f5f5")
             status_item.setForeground(QBrush(QColor(color_hex)))
+            status_item.setBackground(QBrush(QColor(bg_hex)))
             font = QFont()
             font.setBold(True)
             status_item.setFont(font)
