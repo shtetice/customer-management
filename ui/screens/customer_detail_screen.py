@@ -1,10 +1,10 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView,
-    QAbstractItemView, QMessageBox, QFrame
+    QAbstractItemView, QMessageBox, QFrame, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QBrush, QColor
+from PyQt6.QtGui import QFont, QBrush, QColor, QCursor
 
 from controllers.customer_controller import customer_controller
 from controllers.treatment_controller import treatment_controller
@@ -135,7 +135,7 @@ class CustomerDetailScreen(QWidget):
         self.treatments_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.treatments_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         self.treatments_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
-        self.treatments_table.setColumnWidth(4, 200)
+        self.treatments_table.setColumnWidth(4, 110)
         layout.addWidget(self.treatments_table)
         self._refresh_treatments()
         return widget
@@ -155,30 +155,42 @@ class CustomerDetailScreen(QWidget):
     def _treatment_actions(self, treatment_id: int) -> QWidget:
         w = QWidget()
         row = QHBoxLayout(w)
-        row.setContentsMargins(4, 2, 4, 2)
-        row.setSpacing(6)
+        row.setContentsMargins(8, 4, 8, 4)
+        row.addStretch()
 
-        btn_receipt = QPushButton("+ קבלה")
-        btn_receipt.setFixedWidth(75)
-        btn_receipt.setStyleSheet("""
-            QPushButton { background:#27ae60; color:white; border:none; border-radius:4px; font-size:12px; }
-            QPushButton:hover { background:#219a52; }
+        btn = QPushButton("פעולות ▾")
+        btn.setFixedHeight(28)
+        btn.setMinimumWidth(80)
+        btn.setStyleSheet("""
+            QPushButton {
+                background: #f0f4f8; color: #2c3e50;
+                border: 1px solid #bdc3c7; border-radius: 5px;
+                font-size: 12px; padding: 0 8px;
+            }
+            QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
         """)
-        btn_receipt.clicked.connect(lambda _, tid=treatment_id: self._add_receipt(tid))
-        row.addWidget(btn_receipt)
 
-        if auth_service.has_permission("treatments.add"):
-            btn_edit = QPushButton("עריכה")
-            btn_edit.setFixedWidth(60)
-            btn_edit.clicked.connect(lambda _, tid=treatment_id: self._edit_treatment(tid))
-            row.addWidget(btn_edit)
+        def open_menu(tid=treatment_id):
+            menu = QMenu(self)
+            menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+            menu.setStyleSheet("""
+                QMenu {
+                    background: white; border: 1px solid #ddd;
+                    border-radius: 6px; padding: 4px; font-size: 13px;
+                }
+                QMenu::item { padding: 7px 20px; border-radius: 4px; color: #2c3e50; }
+                QMenu::item:selected { background: #f0f4f8; }
+                QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
+            """)
+            menu.addAction("+ הוסף קבלה", lambda: self._add_receipt(tid))
+            if auth_service.has_permission("treatments.add"):
+                menu.addAction("✎  עריכה", lambda: self._edit_treatment(tid))
+                menu.addSeparator()
+                menu.addAction("✕  מחק", lambda: self._delete_treatment(tid))
+            menu.exec(QCursor.pos())
 
-            btn_del = QPushButton("מחק")
-            btn_del.setObjectName("btn_danger")
-            btn_del.setFixedWidth(65)
-            btn_del.clicked.connect(lambda _, tid=treatment_id: self._delete_treatment(tid))
-            row.addWidget(btn_del)
-
+        btn.clicked.connect(open_menu)
+        row.addWidget(btn)
         return w
 
     def _add_treatment(self):
@@ -228,7 +240,7 @@ class CustomerDetailScreen(QWidget):
         self.receipts_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.receipts_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         self.receipts_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
-        self.receipts_table.setColumnWidth(4, 140)
+        self.receipts_table.setColumnWidth(4, 110)
         layout.addWidget(self.receipts_table)
         self._refresh_receipts()
         return widget
@@ -256,21 +268,43 @@ class CustomerDetailScreen(QWidget):
     def _receipt_actions(self, receipt_id: int) -> QWidget:
         w = QWidget()
         row = QHBoxLayout(w)
-        row.setContentsMargins(4, 2, 4, 2)
-        row.setSpacing(6)
+        row.setContentsMargins(8, 4, 8, 4)
+        row.addStretch()
 
-        if auth_service.has_permission("receipts.add"):
-            btn_edit = QPushButton("עריכה")
-            btn_edit.setFixedWidth(65)
-            btn_edit.clicked.connect(lambda _, rid=receipt_id: self._edit_receipt(rid))
-            row.addWidget(btn_edit)
+        if not auth_service.has_permission("receipts.add"):
+            return w
 
-            btn_del = QPushButton("מחק")
-            btn_del.setObjectName("btn_danger")
-            btn_del.setFixedWidth(65)
-            btn_del.clicked.connect(lambda _, rid=receipt_id: self._delete_receipt(rid))
-            row.addWidget(btn_del)
+        btn = QPushButton("פעולות ▾")
+        btn.setFixedHeight(28)
+        btn.setMinimumWidth(80)
+        btn.setStyleSheet("""
+            QPushButton {
+                background: #f0f4f8; color: #2c3e50;
+                border: 1px solid #bdc3c7; border-radius: 5px;
+                font-size: 12px; padding: 0 8px;
+            }
+            QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
+        """)
 
+        def open_menu(rid=receipt_id):
+            menu = QMenu(self)
+            menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+            menu.setStyleSheet("""
+                QMenu {
+                    background: white; border: 1px solid #ddd;
+                    border-radius: 6px; padding: 4px; font-size: 13px;
+                }
+                QMenu::item { padding: 7px 20px; border-radius: 4px; color: #2c3e50; }
+                QMenu::item:selected { background: #f0f4f8; }
+                QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
+            """)
+            menu.addAction("✎  עריכה", lambda: self._edit_receipt(rid))
+            menu.addSeparator()
+            menu.addAction("✕  מחק", lambda: self._delete_receipt(rid))
+            menu.exec(QCursor.pos())
+
+        btn.clicked.connect(open_menu)
+        row.addWidget(btn)
         return w
 
     def _add_receipt(self, treatment_id: int | None):
