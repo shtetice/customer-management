@@ -158,6 +158,7 @@ class CustomerListScreen(QWidget):
             # Status badge cell
             status_label = QLabel(STATUS_LABELS.get(customer.status.value, customer.status.value))
             status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            status_label.setMinimumWidth(70)
             color = STATUS_COLORS.get(customer.status.value, "#999")
             status_label.setStyleSheet(
                 f"background-color: {color}; color: white; border-radius: 10px; padding: 2px 10px;"
