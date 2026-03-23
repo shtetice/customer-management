@@ -18,7 +18,8 @@
       "Bash(~/.pyenv/shims/python -m pytest tests/ -q)",
       "Bash(source venv/bin/activate)",
       "Bash(python -c \":*)",
-      "Bash(python3 -c \":*)"
+      "Bash(python3 -c \":*)",
+      "Bash(cd * && git *)"
     ]
   }
 }
