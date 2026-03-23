@@ -23,12 +23,7 @@ class LoginScreen(QWidget):
 
         card = QWidget()
         card.setFixedWidth(360)
-        card.setStyleSheet("""
-            QWidget {
-                background: white;
-                border-radius: 10px;
-            }
-        """)
+        card.setStyleSheet("background: white; border-radius: 10px;")
         layout = QVBoxLayout(card)
         layout.setSpacing(16)
         layout.setContentsMargins(32, 32, 32, 32)

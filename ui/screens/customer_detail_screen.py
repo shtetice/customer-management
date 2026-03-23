@@ -72,6 +72,7 @@ class CustomerDetailScreen(QWidget):
         card_layout.addWidget(self._email_label)
 
         layout.addWidget(self._summary_card)
+        self._customer_name = ""
         self._refresh_summary()
 
         # Tabs
@@ -98,6 +99,7 @@ class CustomerDetailScreen(QWidget):
         if not c:
             return
         self._name_label.setText(f"{c.name} {c.surname}")
+        self._customer_name = f"{c.name} {c.surname}"
         status_text = STATUS_LABELS.get(c.status.value, c.status.value)
         colors = {"lead": "#f39c12", "customer": "#27ae60", "retention": "#8e44ad", "vip": "#c0392b"}
         color = colors.get(c.status.value, "#999")
@@ -273,12 +275,12 @@ class CustomerDetailScreen(QWidget):
         return w
 
     def _add_receipt(self, treatment_id: int | None):
-        dlg = AddReceiptDialog(self._customer_id, preselect_treatment_id=treatment_id, parent=self)
+        dlg = AddReceiptDialog(self._customer_id, preselect_treatment_id=treatment_id, customer_name=self._customer_name, parent=self)
         dlg.saved.connect(self._refresh_receipts)
         dlg.exec()
 
     def _edit_receipt(self, receipt_id: int):
-        dlg = AddReceiptDialog(self._customer_id, receipt_id=receipt_id, parent=self)
+        dlg = AddReceiptDialog(self._customer_id, receipt_id=receipt_id, customer_name=self._customer_name, parent=self)
         dlg.saved.connect(self._refresh_receipts)
         dlg.exec()
 

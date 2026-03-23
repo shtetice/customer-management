@@ -156,14 +156,15 @@ class CustomerListScreen(QWidget):
             self.table.setItem(row_idx, 3, self._cell(customer.email or ""))
 
             # Status badge cell
-            status_label = QLabel(STATUS_LABELS.get(customer.status.value, customer.status.value))
-            status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            status_label.setMinimumWidth(70)
-            color = STATUS_COLORS.get(customer.status.value, "#999")
-            status_label.setStyleSheet(
-                f"background-color: {color}; color: white; border-radius: 10px; padding: 2px 10px;"
-            )
-            self.table.setCellWidget(row_idx, 4, status_label)
+            status_text = "● " + STATUS_LABELS.get(customer.status.value, customer.status.value)
+            status_item = QTableWidgetItem(status_text)
+            status_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            color_hex = STATUS_COLORS.get(customer.status.value, "#999")
+            status_item.setForeground(QBrush(QColor(color_hex)))
+            font = QFont()
+            font.setBold(True)
+            status_item.setFont(font)
+            self.table.setItem(row_idx, 4, status_item)
 
             # Action buttons
             actions_widget = QWidget()

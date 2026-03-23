@@ -8,6 +8,7 @@ from PyQt6.QtGui import QFont
 from ui.screens.customer_list_screen import CustomerListScreen
 from ui.screens.add_customer_screen import AddCustomerScreen
 from ui.screens.customer_detail_screen import CustomerDetailScreen
+from ui.screens.settings_screen import SettingsScreen
 from ui.styles import APP_STYLE
 from services.auth_service import auth_service
 
@@ -43,6 +44,7 @@ class MainWindow(QMainWindow):
         # Nav buttons
         self._nav_buttons = {}
         self._add_nav_button(sidebar_layout, "customers", "👥  לקוחות", "customers.view")
+        self._add_nav_button(sidebar_layout, "settings", "⚙️  הגדרות", "settings.view")
         sidebar_layout.addStretch()
 
         # User info + logout at bottom
@@ -91,6 +93,8 @@ class MainWindow(QMainWindow):
 
         if key == "customers":
             self._show_customer_list()
+        elif key == "settings":
+            self._show_settings()
 
     def _show_customer_list(self):
         self._clear_stack()
@@ -124,6 +128,13 @@ class MainWindow(QMainWindow):
         screen.cancelled.connect(self._show_customer_list)
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
+
+    def _show_settings(self):
+        self._clear_stack()
+        screen = SettingsScreen()
+        self.stack.addWidget(screen)
+        self.stack.setCurrentWidget(screen)
+        self._set_nav_active("settings")
 
     def _clear_stack(self):
         while self.stack.count():
