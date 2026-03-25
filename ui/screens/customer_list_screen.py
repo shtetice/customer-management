@@ -55,6 +55,7 @@ class CustomerListScreen(QWidget):
     def __init__(self):
         super().__init__()
         self._current_customers = []
+        self.setStyleSheet("QWidget { background-color: #f7f7f7; }")
         self._build_ui()
 
     def _build_ui(self):

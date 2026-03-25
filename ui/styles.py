@@ -2,7 +2,7 @@
 
 APP_STYLE = """
 QMainWindow, QWidget {
-    background-color: #f5f5f5;
+    background-color: #f0f0f0;
     color: #2c3e50;
     font-family: Arial;
     font-size: 14px;
@@ -44,7 +44,7 @@ QMainWindow, QWidget {
 
 /* Cards / content area */
 #content_area {
-    background-color: #ffffff;
+    background-color: #f7f7f7;
     border-radius: 8px;
     margin: 16px;
 }
@@ -88,7 +88,7 @@ QTableWidget {
     border: 1px solid #ddd;
     border-radius: 4px;
     gridline-color: #ececec;
-    background-color: white;
+    background-color: #f9f9f9;
     selection-background-color: #d6eaf8;
     selection-color: #2c3e50;
 }
