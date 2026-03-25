@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QPushButton, QLabel, QStackedWidget, QSizePolicy
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
 
 from ui.screens.customer_list_screen import CustomerListScreen
@@ -14,6 +14,8 @@ from services.auth_service import auth_service
 
 
 class MainWindow(QMainWindow):
+    logout_requested = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("מערכת ניהול לקוחות")
@@ -154,4 +156,5 @@ class MainWindow(QMainWindow):
         from services.session_service import session_service
         session_service.clear()
         auth_service.logout()
+        self.logout_requested.emit()
         self.close()

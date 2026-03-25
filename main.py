@@ -11,22 +11,31 @@ from ui.main_window import MainWindow
 from ui.styles import APP_STYLE
 
 
-def open_main_window():
-    window = MainWindow()
-    window.show()
-    return window
-
-
 def main():
     app = QApplication(sys.argv)
     app.setStyle(QStyleFactory.create("Fusion"))
     app.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
     app.setStyleSheet(APP_STYLE)
+    app.setQuitOnLastWindowClosed(False)  # we control quitting manually
 
     init_db()
     auth_service.ensure_default_manager()
 
     main_window: MainWindow | None = None
+
+    def show_login():
+        login = LoginScreen()
+        login.setFixedSize(480, 430)
+        login.setWindowTitle("התחברות - מערכת ניהול לקוחות")
+        login.login_successful.connect(lambda: on_login(login))
+        login.show()
+
+    def on_login(login: LoginScreen):
+        nonlocal main_window
+        login.close()
+        main_window = MainWindow()
+        main_window.logout_requested.connect(show_login)
+        main_window.show()
 
     # Try to restore a remembered session
     saved = session_service.load()
@@ -37,24 +46,15 @@ def main():
             if user:
                 db.expunge(user)
                 auth_service._current_user = user
-                main_window = open_main_window()
+                main_window = MainWindow()
+                main_window.logout_requested.connect(show_login)
+                main_window.show()
                 sys.exit(app.exec())
         finally:
             db.close()
 
     # No valid session — show login screen
-    login = LoginScreen()
-    login.setFixedSize(480, 430)
-    login.setWindowTitle("התחברות - מערכת ניהול לקוחות")
-
-    def on_login():
-        nonlocal main_window
-        login.close()
-        main_window = open_main_window()
-
-    login.login_successful.connect(on_login)
-    login.show()
-
+    show_login()
     sys.exit(app.exec())
 
 
