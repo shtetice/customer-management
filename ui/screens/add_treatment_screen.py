@@ -112,14 +112,17 @@ class AddTreatmentDialog(QDialog):
         return l
 
     def _load(self, treatment_id: int):
-        t = treatment_controller.get_by_id(treatment_id)
-        if not t:
-            self.reject()
-            return
-        self.date_picker.set_date(t.date.date())
-        self.description_input.setText(t.description or "")
-        self.performed_by_input.setText(t.performed_by or "")
-        self.notes_input.setPlainText(t.notes or "")
+        try:
+            t = treatment_controller.get_by_id(treatment_id)
+            if not t:
+                self.reject()
+                return
+            self.date_picker.set_date(t.date.date() if hasattr(t.date, 'date') else t.date)
+            self.description_input.setText(t.description or "")
+            self.performed_by_input.setText(t.performed_by or "")
+            self.notes_input.setPlainText(t.notes or "")
+        except Exception as e:
+            QMessageBox.critical(self, "שגיאה בטעינת טיפול", str(e))
 
     def _save(self):
         d = self.date_picker.get_date()

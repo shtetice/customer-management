@@ -144,17 +144,20 @@ class AddReceiptDialog(QDialog):
         return l
 
     def _load(self, receipt_id: int):
-        r = receipt_controller.get_by_id(receipt_id)
-        if not r:
-            self.reject()
-            return
-        self.date_picker.set_date(r.date.date())
-        self.amount_input.setText(r.amount or "")
-        self.description_input.setPlainText(r.description or "")
-        for i in range(self.treatment_combo.count()):
-            if self.treatment_combo.itemData(i) == r.treatment_id:
-                self.treatment_combo.setCurrentIndex(i)
-                break
+        try:
+            r = receipt_controller.get_by_id(receipt_id)
+            if not r:
+                self.reject()
+                return
+            self.date_picker.set_date(r.date.date() if hasattr(r.date, 'date') else r.date)
+            self.amount_input.setText(r.amount or "")
+            self.description_input.setPlainText(r.description or "")
+            for i in range(self.treatment_combo.count()):
+                if self.treatment_combo.itemData(i) == r.treatment_id:
+                    self.treatment_combo.setCurrentIndex(i)
+                    break
+        except Exception as e:
+            QMessageBox.critical(self, "שגיאה בטעינת קבלה", str(e))
 
     def _save(self, export_file: bool = False):
         d = self.date_picker.get_date()

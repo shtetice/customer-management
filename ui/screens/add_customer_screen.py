@@ -498,34 +498,37 @@ class AddCustomerScreen(QWidget):
         return lbl
 
     def _load_customer(self, customer_id: int):
-        customer = customer_controller.get_by_id(customer_id)
-        if not customer:
-            QMessageBox.critical(self, "שגיאה", "הלקוח לא נמצא")
-            self.cancelled.emit()
-            return
+        try:
+            customer = customer_controller.get_by_id(customer_id)
+            if not customer:
+                QMessageBox.critical(self, "שגיאה", "הלקוח לא נמצא")
+                self.cancelled.emit()
+                return
 
-        self.name_input.setText(customer.name)
-        self.surname_input.setText(customer.surname)
-        self.phone_inputs[0].setText(customer.phone or "")
-        for extra in [customer.phone2, customer.phone3]:
-            if extra:
-                self._add_phone_field()
-                self.phone_inputs[-1].setText(extra)
-        self.email_input.setText(customer.email or "")
-        self.address_input.setText(customer.address or "")
-        if customer.date_of_birth:
-            self.dob_input.set_date(customer.date_of_birth)
-        self.notes_input.setPlainText(customer.notes or "")
+            self.name_input.setText(customer.name or "")
+            self.surname_input.setText(customer.surname or "")
+            self.phone_inputs[0].setText(customer.phone or "")
+            for extra in [customer.phone2, customer.phone3]:
+                if extra:
+                    self._add_phone_field()
+                    self.phone_inputs[-1].setText(extra)
+            self.email_input.setText(customer.email or "")
+            self.address_input.setText(customer.address or "")
+            if customer.date_of_birth:
+                self.dob_input.set_date(customer.date_of_birth)
+            self.notes_input.setPlainText(customer.notes or "")
 
-        for i in range(self.gender_combo.count()):
-            if self.gender_combo.itemData(i) == customer.gender:
-                self.gender_combo.setCurrentIndex(i)
-                break
+            for i in range(self.gender_combo.count()):
+                if self.gender_combo.itemData(i) == customer.gender:
+                    self.gender_combo.setCurrentIndex(i)
+                    break
 
-        for i in range(self.status_combo.count()):
-            if self.status_combo.itemData(i) == customer.status:
-                self.status_combo.setCurrentIndex(i)
-                break
+            for i in range(self.status_combo.count()):
+                if self.status_combo.itemData(i) == customer.status:
+                    self.status_combo.setCurrentIndex(i)
+                    break
+        except Exception as e:
+            QMessageBox.critical(self, "שגיאה בטעינת לקוח", str(e))
 
     def _on_save(self):
         name = self.name_input.text().strip()

@@ -118,14 +118,15 @@ class MainWindow(QMainWindow):
         self._clear_stack()
         screen = CustomerDetailScreen(customer_id)
         screen.back_requested.connect(self._show_customer_list)
+        screen.edit_requested.connect(self._show_edit_customer)
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
 
     def _show_edit_customer(self, customer_id: int):
         self._clear_stack()
         screen = AddCustomerScreen(customer_id=customer_id)
-        screen.customer_saved.connect(self._show_customer_list)
-        screen.cancelled.connect(self._show_customer_list)
+        screen.customer_saved.connect(lambda: self._show_customer_detail(customer_id))
+        screen.cancelled.connect(lambda: self._show_customer_detail(customer_id))
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
 

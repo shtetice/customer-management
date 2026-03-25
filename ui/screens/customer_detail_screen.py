@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView,
-    QAbstractItemView, QMessageBox, QFrame, QMenu, QScrollArea
+    QAbstractItemView, QMessageBox, QFrame, QMenu, QScrollArea, QSizePolicy,
+    QTextEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QBrush, QColor, QCursor
@@ -44,33 +45,74 @@ class CustomerDetailScreen(QWidget):
 
         # Customer summary card
         self._summary_card = QWidget()
+        self._summary_card.setObjectName("summaryCard")
         self._summary_card.setStyleSheet("""
-            QWidget { background:#f0f7fd; border-radius:8px; border:1px solid #d6eaf8; }
+            QWidget#summaryCard {
+                background: white;
+                border-radius: 10px;
+                border: 1px solid #e0e6ed;
+            }
         """)
         card_layout = QHBoxLayout(self._summary_card)
-        card_layout.setContentsMargins(16, 12, 16, 12)
-        card_layout.setSpacing(24)
+        card_layout.setContentsMargins(20, 18, 20, 18)
+        card_layout.setSpacing(20)
 
+        # Avatar circle
+        self._avatar_label = QLabel()
+        self._avatar_label.setFixedSize(56, 56)
+        self._avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._avatar_label.setFont(QFont("Arial", 20, QFont.Weight.Bold))
+        card_layout.addWidget(self._avatar_label)
+
+        # Name + status column
+        name_col = QVBoxLayout()
+        name_col.setSpacing(4)
         self._name_label = QLabel()
-        self._name_label.setFont(QFont("Arial", 15, QFont.Weight.Bold))
-        self._name_label.setStyleSheet("color:#2c3e50; border:none; background:transparent;")
-        card_layout.addWidget(self._name_label)
+        self._name_label.setFont(QFont("Arial", 17, QFont.Weight.Bold))
+        self._name_label.setStyleSheet("color:#1a2533; border:none; background:transparent;")
+        name_col.addWidget(self._name_label)
 
         self._status_label = QLabel()
         self._status_label.setStyleSheet(
-            "color:white; border-radius:10px; padding:3px 12px; font-size:12px; border:none;"
+            "color:white; border-radius:10px; padding:3px 12px; font-size:12px; border:none; font-weight:bold;"
         )
-        card_layout.addWidget(self._status_label)
+        self._status_label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+        name_col.addWidget(self._status_label)
+        card_layout.addLayout(name_col)
 
         card_layout.addStretch()
 
+        # Contact info column (phone + email stacked)
+        contact_col = QVBoxLayout()
+        contact_col.setSpacing(6)
+        contact_col.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
         self._phone_label = QLabel()
-        self._phone_label.setStyleSheet("color:#555; font-size:13px; border:none; background:transparent;")
-        card_layout.addWidget(self._phone_label)
+        self._phone_label.setStyleSheet("color:#444; font-size:13px; border:none; background:transparent;")
+        contact_col.addWidget(self._phone_label)
 
         self._email_label = QLabel()
-        self._email_label.setStyleSheet("color:#555; font-size:13px; border:none; background:transparent;")
-        card_layout.addWidget(self._email_label)
+        self._email_label.setStyleSheet("color:#444; font-size:13px; border:none; background:transparent;")
+        contact_col.addWidget(self._email_label)
+
+        card_layout.addLayout(contact_col)
+
+        # Edit button (top-right)
+        if auth_service.has_permission("customers.edit"):
+            self._card_edit_btn = QPushButton("✎  עריכה")
+            self._card_edit_btn.setFixedHeight(32)
+            self._card_edit_btn.setMinimumWidth(90)
+            self._card_edit_btn.setStyleSheet("""
+                QPushButton {
+                    background: #f0f4f8; color: #2c3e50;
+                    border: 1px solid #d0d7de; border-radius: 6px;
+                    font-size: 12px; padding: 0 12px;
+                }
+                QPushButton:hover { background: #dce8f5; border-color: #3498db; color: #2980b9; }
+            """)
+            cid = self._customer_id
+            self._card_edit_btn.clicked.connect(lambda: self.edit_requested.emit(cid))
+            card_layout.addWidget(self._card_edit_btn, alignment=Qt.AlignmentFlag.AlignTop)
 
         layout.addWidget(self._summary_card)
         self._customer_name = ""
@@ -96,55 +138,122 @@ class CustomerDetailScreen(QWidget):
 
     # ── Summary card ──────────────────────────────────────────
 
+    # Palette for avatar background — cycles by first letter
+    _AVATAR_COLORS = [
+        "#3498db", "#2ecc71", "#e67e22", "#9b59b6",
+        "#1abc9c", "#e74c3c", "#2980b9", "#27ae60",
+    ]
+
     def _refresh_summary(self):
         c = customer_controller.get_by_id(self._customer_id)
         if not c:
             return
-        self._name_label.setText(f"{c.name} {c.surname}")
-        self._customer_name = f"{c.name} {c.surname}"
+        full_name = f"{c.name} {c.surname}"
+        self._name_label.setText(full_name)
+        self._customer_name = full_name
+
+        # Avatar: initials in a colored circle
+        initials = (c.name[:1] + c.surname[:1]).upper() if c.surname else c.name[:2].upper()
+        color_idx = ord(c.name[0].upper()) % len(self._AVATAR_COLORS) if c.name else 0
+        avatar_color = self._AVATAR_COLORS[color_idx]
+        self._avatar_label.setText(initials)
+        self._avatar_label.setStyleSheet(f"""
+            QLabel {{
+                background: {avatar_color};
+                color: white;
+                border-radius: 28px;
+                border: none;
+            }}
+        """)
+
+        # Status badge
         status_text = STATUS_LABELS.get(c.status.value, c.status.value)
         color = STATUS_COLORS.get(c.status.value, "#999")
-        self._status_label.setText(status_text)
+        self._status_label.setText(f"● {status_text}")
         self._status_label.setStyleSheet(
             f"color:white; background:{color}; border-radius:10px; "
-            f"padding:3px 12px; font-size:12px; border:none;"
+            f"padding:3px 12px; font-size:12px; border:none; font-weight:bold;"
         )
+
+        # Contact
         phones = [p for p in [c.phone, c.phone2, c.phone3] if p]
-        self._phone_label.setText("📞 " + " | ".join(phones) if phones else "")
-        self._email_label.setText("✉ " + c.email if c.email else "")
+        self._phone_label.setText("📞  " + "  |  ".join(phones) if phones else "")
+        self._email_label.setText("✉   " + c.email if c.email else "")
 
     # ── Info tab ──────────────────────────────────────────────
 
     def _build_info_tab(self) -> QWidget:
         widget = QWidget()
+        widget.setStyleSheet("background: transparent;")
         self._info_layout = QVBoxLayout(widget)
-        self._info_layout.setSpacing(10)
-        self._info_layout.setContentsMargins(20, 16, 20, 16)
+        self._info_layout.setSpacing(16)
+        self._info_layout.setContentsMargins(20, 16, 20, 20)
         self._refresh_info()
         return widget
+
+    @staticmethod
+    def _make_section_card(title: str) -> tuple[QWidget, QGridLayout]:
+        card = QWidget()
+        card.setObjectName("infoCard")
+        card.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        card.setStyleSheet("""
+            QWidget#infoCard {
+                background: white;
+                border: 1px solid #e0e6ed;
+                border-radius: 8px;
+            }
+        """)
+        inner = QVBoxLayout(card)
+        inner.setContentsMargins(16, 14, 16, 16)
+        inner.setSpacing(10)
+
+        hdr = QLabel(title)
+        hdr.setStyleSheet(
+            "font-size: 11px; font-weight: bold; color: #7f8c8d; "
+            "letter-spacing: 1px; background: transparent; border: none;"
+        )
+        inner.addWidget(hdr)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet("background: #e8ecf0; border: none; max-height: 1px;")
+        inner.addWidget(sep)
+
+        grid = QGridLayout()
+        grid.setColumnStretch(1, 1)
+        grid.setHorizontalSpacing(16)
+        grid.setVerticalSpacing(12)
+        inner.addLayout(grid)
+        return card, grid
+
+    @staticmethod
+    def _add_grid_row(grid: QGridLayout, label: str, value: str):
+        row = grid.rowCount()
+        lbl = QLabel(label.upper())
+        lbl.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        lbl.setStyleSheet(
+            "font-size: 14px; font-weight: bold; color: #95a5a6; "
+            "letter-spacing: 0.5px; background: transparent; border: none;"
+        )
+        lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        lbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+
+        val = QLabel(value if value else "—")
+        val.setWordWrap(True)
+        val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignAbsolute | Qt.AlignmentFlag.AlignTop)
+        if value:
+            val.setStyleSheet("font-size: 13px; color: #1a2533; background: transparent; border: none;")
+        else:
+            val.setStyleSheet("font-size: 13px; color: #bdc3c7; font-style: italic; background: transparent; border: none;")
+
+        grid.addWidget(lbl, row, 0)
+        grid.addWidget(val, row, 1)
 
     def _refresh_info(self):
         while self._info_layout.count():
             item = self._info_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-
-        LABEL_STYLE = "color: #888; font-size: 12px;"
-        VALUE_STYLE = "color: #2c3e50; font-size: 13px; background: transparent;"
-        EMPTY_STYLE = "color: #bbb; font-size: 13px; font-style: italic; background: transparent;"
-
-        def add_row(label: str, value: str):
-            lbl = QLabel(label)
-            lbl.setStyleSheet(LABEL_STYLE)
-            val = QLabel(value if value else "—")
-            val.setStyleSheet(VALUE_STYLE if value else EMPTY_STYLE)
-            val.setWordWrap(True)
-            self._info_layout.addWidget(lbl)
-            self._info_layout.addWidget(val)
-            sep = QFrame()
-            sep.setFrameShape(QFrame.Shape.HLine)
-            sep.setStyleSheet("color: #eee;")
-            self._info_layout.addWidget(sep)
 
         try:
             c = customer_controller.get_by_id(self._customer_id)
@@ -156,14 +265,83 @@ class CustomerDetailScreen(QWidget):
             from database.models import Gender
             GENDER_LABELS = {Gender.MALE: "זכר", Gender.FEMALE: "נקבה", Gender.OTHER: "אחר"}
 
+            # Contact card
+            contact_card, contact_grid = self._make_section_card("פרטי קשר")
             phones = [p for p in [c.phone, c.phone2, c.phone3] if p]
-            add_row("טלפון", " | ".join(phones))
-            add_row("אימייל", c.email or "")
-            add_row("כתובת", c.address or "")
+            self._add_grid_row(contact_grid, "טלפון", "  |  ".join(phones))
+            self._add_grid_row(contact_grid, "אימייל", c.email or "")
+            self._add_grid_row(contact_grid, "כתובת", c.address or "")
+            self._info_layout.addWidget(contact_card)
+
+            # Personal card
+            personal_card, personal_grid = self._make_section_card("פרטים אישיים")
             dob = c.date_of_birth.strftime("%d/%m/%Y") if c.date_of_birth else ""
-            add_row("תאריך לידה", dob)
-            add_row("מגדר", GENDER_LABELS.get(c.gender, "") if c.gender else "")
-            add_row("הערות", c.notes or "")
+            self._add_grid_row(personal_grid, "תאריך לידה", dob)
+            self._add_grid_row(personal_grid, "מגדר", GENDER_LABELS.get(c.gender, "") if c.gender else "")
+            self._info_layout.addWidget(personal_card)
+
+            # Notes card — scrollable, 1000-word limit
+            notes_card = QWidget()
+            notes_card.setObjectName("infoCard")
+            notes_card.setStyleSheet("""
+                QWidget#infoCard {
+                    background: white;
+                    border: 1px solid #e0e6ed;
+                    border-radius: 8px;
+                }
+            """)
+            notes_inner = QVBoxLayout(notes_card)
+            notes_inner.setContentsMargins(16, 14, 16, 16)
+            notes_inner.setSpacing(10)
+
+            notes_hdr = QLabel("הערות")
+            notes_hdr.setStyleSheet(
+                "font-size: 11px; font-weight: bold; color: #7f8c8d; "
+                "letter-spacing: 1px; background: transparent; border: none;"
+            )
+            notes_inner.addWidget(notes_hdr)
+
+            notes_sep = QFrame()
+            notes_sep.setFrameShape(QFrame.Shape.HLine)
+            notes_sep.setStyleSheet("background: #e8ecf0; border: none; max-height: 1px;")
+            notes_inner.addWidget(notes_sep)
+
+            raw_notes = c.notes or ""
+            words = raw_notes.split()
+            if len(words) > 1000:
+                raw_notes = " ".join(words[:1000]) + "…"
+
+            notes_edit = QTextEdit()
+            notes_edit.setReadOnly(True)
+            notes_edit.setFixedHeight(80)
+            notes_edit.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            notes_edit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            notes_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+            notes_edit.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+            color = "#1a2533" if c.notes else "#bdc3c7"
+            style = "font-style: italic;" if not c.notes else ""
+            notes_edit.setStyleSheet(f"""
+                QTextEdit {{
+                    font-size: 13px;
+                    color: {color};
+                    {style}
+                    background: #f8f9fa;
+                    border: 1px solid #e0e6ed;
+                    border-radius: 6px;
+                    padding: 8px;
+                }}
+            """)
+
+            def _resize_notes():
+                doc_h = int(notes_edit.document().size().height())
+                notes_edit.setFixedHeight(min(300, max(80, doc_h + 20)))
+
+            notes_edit.document().contentsChanged.connect(_resize_notes)
+            # Set text after connecting so the signal fires with real dimensions
+            notes_edit.setPlainText(raw_notes if raw_notes else "—")
+            notes_inner.addWidget(notes_edit)
+            self._info_layout.addWidget(notes_card)
+
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -173,14 +351,6 @@ class CustomerDetailScreen(QWidget):
             self._info_layout.addWidget(err)
 
         self._info_layout.addStretch()
-
-        if auth_service.has_permission("customers.edit"):
-            cid = self._customer_id
-            btn_edit = QPushButton("✎  עריכת פרטי לקוח")
-            btn_edit.setFixedHeight(36)
-            btn_edit.setMaximumWidth(200)
-            btn_edit.clicked.connect(lambda: self.edit_requested.emit(cid))
-            self._info_layout.addWidget(btn_edit, alignment=Qt.AlignmentFlag.AlignLeft)
 
     # ── Treatments tab ────────────────────────────────────────
 

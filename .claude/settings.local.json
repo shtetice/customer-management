@@ -19,7 +19,10 @@
       "Bash(source venv/bin/activate)",
       "Bash(python -c \":*)",
       "Bash(python3 -c \":*)",
-      "Bash(cd * && git *)"
+      "Bash(cd * && git *)",
+      "Bash(python -c \"from ui.screens.customer_detail_screen import CustomerDetailScreen; print\\(''OK''\\)\")",
+      "Bash(python3 -c \"from ui.screens.customer_detail_screen import CustomerDetailScreen; print\\(''OK''\\)\")",
+      "Bash(python3 -m py_compile ui/screens/customer_detail_screen.py)"
     ]
   }
 }
