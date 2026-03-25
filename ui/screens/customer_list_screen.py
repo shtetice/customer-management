@@ -308,7 +308,7 @@ class CustomerListScreen(QWidget):
 
     def _cell(self, text: str) -> QTableWidgetItem:
         item = QTableWidgetItem(text or "")
-        item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignAbsolute | Qt.AlignmentFlag.AlignVCenter)
         item.setForeground(QBrush(QColor("#2c3e50")))
         return item
 
