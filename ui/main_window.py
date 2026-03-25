@@ -17,7 +17,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("מערכת ניהול לקוחות")
-        self.setMinimumSize(1024, 680)
+        self.setMinimumSize(1126, 748)
+        self.resize(1126, 748)
         self.setStyleSheet(APP_STYLE)
         self._build_ui()
 
