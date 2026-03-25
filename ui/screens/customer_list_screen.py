@@ -130,6 +130,7 @@ class CustomerListScreen(QWidget):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(46)
         layout.addWidget(self.table)
 
         self._refresh()
@@ -202,8 +203,6 @@ class CustomerListScreen(QWidget):
                     QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
                 """)
                 menu.addAction("👁  פרטים", lambda: self.request_view_customer.emit(cid))
-                if auth_service.has_permission("customers.edit"):
-                    menu.addAction("✎  עריכה", lambda: self.request_edit_customer.emit(cid))
                 if auth_service.has_permission("customers.delete"):
                     menu.addSeparator()
                     delete_action = menu.addAction("✕  מחק", lambda: self._confirm_delete(cid))
@@ -214,11 +213,11 @@ class CustomerListScreen(QWidget):
                     # use font color via HTML workaround isn't available — keep it grouped at bottom
                 menu.exec(QCursor.pos())
 
-            btn_menu.clicked.connect(make_menu)
+            btn_menu.clicked.connect(lambda: make_menu())
             actions_layout.addWidget(btn_menu)
 
             self.table.setCellWidget(row_idx, 5, actions_widget)
-            self.table.setRowHeight(row_idx, 44)
+            self.table.setRowHeight(row_idx, 46)
 
     def _cell(self, text: str) -> QTableWidgetItem:
         item = QTableWidgetItem(text or "")

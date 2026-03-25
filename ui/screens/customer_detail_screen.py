@@ -149,7 +149,7 @@ class CustomerDetailScreen(QWidget):
         try:
             c = customer_controller.get_by_id(self._customer_id)
             if not c:
-                self._info_layout.addWidget(QLabel(f"לקוח לא נמצא (customer_id={self._customer_id!r})"))
+                self._info_layout.addWidget(QLabel("לקוח לא נמצא"))
                 self._info_layout.addStretch()
                 return
 
