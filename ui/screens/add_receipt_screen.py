@@ -122,19 +122,19 @@ class AddReceiptDialog(QDialog):
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
 
-        btn_save_file = QPushButton("שמור + ייצא קובץ")
-        btn_save_file.setFixedHeight(34)
-        btn_save_file.setStyleSheet("""
-            QPushButton { background:#27ae60; color:white; border:none; border-radius:4px; font-size:13px; }
-            QPushButton:hover { background:#219a52; }
-        """)
-        btn_save_file.clicked.connect(lambda: self._save(export_file=True))
-        btn_row.addWidget(btn_save_file)
-
         btn_save = QPushButton("שמור קבלה")
         btn_save.setFixedHeight(34)
         btn_save.clicked.connect(lambda: self._save(export_file=False))
         btn_row.addWidget(btn_save)
+
+        btn_save_file = QPushButton("ייצא קובץ")
+        btn_save_file.setFixedHeight(34)
+        btn_save_file.setStyleSheet("""
+            QPushButton { background:#27ae60; color:white; border:none; border-radius:4px; font-size:13px; padding: 0 12px; }
+            QPushButton:hover { background:#219a52; }
+        """)
+        btn_save_file.clicked.connect(lambda: self._save(export_file=True))
+        btn_row.addWidget(btn_save_file)
 
         layout.addLayout(btn_row)
 
