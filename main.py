@@ -35,11 +35,7 @@ def main():
         nonlocal main_window
         login.close()
         main_window = MainWindow()
-        main_window.logout_requested.connect(on_logout)
         main_window.show()
-
-    def on_logout():
-        pass  # MainWindow._logout() calls self.close() → closeEvent handles quit
 
     # Try to restore a remembered session
     saved = session_service.load()
@@ -51,7 +47,6 @@ def main():
                 db.expunge(user)
                 auth_service._current_user = user
                 main_window = MainWindow()
-                main_window.logout_requested.connect(on_logout)
                 main_window.show()
                 sys.exit(app.exec())
         except Exception:
