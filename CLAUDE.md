@@ -112,7 +112,6 @@ If the user says anything like "we're done for today", "let's stop here", "that'
 2. Compile to Windows `.exe` via PyInstaller — add `msoffcrypto`, `openpyxl`, `cryptography` to spec
 3. Receipt format — currently plain `.txt`; consider PDF
 4. Verify `updated_at` fires correctly on partial updates in SQLite
-5. Fix pre-existing `test_db_migration` failures (2 tests — `_migrate()` called before tables exist in test)
 
 **Open questions / blockers:**
 - Shared calendar scope: per-staff appointments? customer booking? which view (day/week/month)?
@@ -121,5 +120,7 @@ If the user says anything like "we're done for today", "let's stop here", "that'
 - `app.setQuitOnLastWindowClosed(False)` must stay — without it, closing the login window before the main window appears kills the app prematurely
 - `LoginScreen._logging_in = True` must be set before `login_successful.emit()` — otherwise `login.close()` in `on_login()` triggers `closeEvent → app.quit()` mid-login
 - `closeEvent` on `MainWindow` always calls `app.quit()` — do NOT add conditional logic back; session is cleared in `_logout()` before close
+- `MainWindow` has NO `logout_requested` signal — it was removed; logout is handled entirely by `closeEvent`
 - `_DatePickerButton` lives in `add_customer_screen.py` and is imported by `add_treatment_screen.py` and `add_receipt_screen.py`
 - Global `QTableWidget::item` stylesheet must NOT set `color` or `background-color` — silently overrides item data roles
+- All 74 tests passing (zero pre-existing failures remain)
