@@ -117,57 +117,21 @@ class CustomerDetailScreen(QWidget):
 
     def _build_info_tab(self) -> QWidget:
         widget = QWidget()
-        outer = QVBoxLayout(widget)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(0)
-
-        # Scroll area so content never gets clipped
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
-        self._info_content = QWidget()
-        self._info_layout = QVBoxLayout(self._info_content)
+        self._info_layout = QVBoxLayout(widget)
         self._info_layout.setSpacing(10)
         self._info_layout.setContentsMargins(20, 16, 20, 16)
-
-        scroll.setWidget(self._info_content)
-        outer.addWidget(scroll)
-
-        if auth_service.has_permission("customers.edit"):
-            btn_row = QWidget()
-            btn_row_layout = QHBoxLayout(btn_row)
-            btn_row_layout.setContentsMargins(20, 8, 20, 12)
-            btn_edit = QPushButton("✎  עריכת פרטי לקוח")
-            btn_edit.setFixedHeight(36)
-            btn_edit.setMaximumWidth(200)
-            cid = self._customer_id
-            btn_edit.clicked.connect(lambda: self.edit_requested.emit(cid))
-            btn_row_layout.addWidget(btn_edit)
-            btn_row_layout.addStretch()
-            outer.addWidget(btn_row)
-
         self._refresh_info()
         return widget
 
     def _refresh_info(self):
-        # Clear previous content
         while self._info_layout.count():
             item = self._info_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        c = customer_controller.get_by_id(self._customer_id)
-        if not c:
-            return
-
-        from database.models import Gender
-        GENDER_LABELS = {Gender.MALE: "זכר", Gender.FEMALE: "נקבה", Gender.OTHER: "אחר"}
-
-        LABEL_STYLE = "color: #888; font-size: 12px; margin-bottom: 1px;"
-        VALUE_STYLE = "color: #2c3e50; font-size: 13px;"
-        EMPTY_STYLE = "color: #bbb; font-size: 13px; font-style: italic;"
+        LABEL_STYLE = "color: #888; font-size: 12px;"
+        VALUE_STYLE = "color: #2c3e50; font-size: 13px; background: transparent;"
+        EMPTY_STYLE = "color: #bbb; font-size: 13px; font-style: italic; background: transparent;"
 
         def add_row(label: str, value: str):
             lbl = QLabel(label)
@@ -179,18 +143,44 @@ class CustomerDetailScreen(QWidget):
             self._info_layout.addWidget(val)
             sep = QFrame()
             sep.setFrameShape(QFrame.Shape.HLine)
-            sep.setStyleSheet("color: #f0f0f0; margin: 4px 0;")
+            sep.setStyleSheet("color: #eee;")
             self._info_layout.addWidget(sep)
 
-        phones = [p for p in [c.phone, c.phone2, c.phone3] if p]
-        add_row("טלפון", " | ".join(phones))
-        add_row("אימייל", c.email or "")
-        add_row("כתובת", c.address or "")
-        dob = c.date_of_birth.strftime("%d/%m/%Y") if c.date_of_birth else ""
-        add_row("תאריך לידה", dob)
-        add_row("מגדר", GENDER_LABELS.get(c.gender, "") if c.gender else "")
-        add_row("הערות", c.notes or "")
+        try:
+            c = customer_controller.get_by_id(self._customer_id)
+            if not c:
+                self._info_layout.addWidget(QLabel("לקוח לא נמצא"))
+                self._info_layout.addStretch()
+                return
+
+            from database.models import Gender
+            GENDER_LABELS = {Gender.MALE: "זכר", Gender.FEMALE: "נקבה", Gender.OTHER: "אחר"}
+
+            phones = [p for p in [c.phone, c.phone2, c.phone3] if p]
+            add_row("טלפון", " | ".join(phones))
+            add_row("אימייל", c.email or "")
+            add_row("כתובת", c.address or "")
+            dob = c.date_of_birth.strftime("%d/%m/%Y") if c.date_of_birth else ""
+            add_row("תאריך לידה", dob)
+            add_row("מגדר", GENDER_LABELS.get(c.gender, "") if c.gender else "")
+            add_row("הערות", c.notes or "")
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            err = QLabel(f"שגיאה בטעינת פרטים: {e}")
+            err.setStyleSheet("color: #e74c3c; font-size: 13px;")
+            err.setWordWrap(True)
+            self._info_layout.addWidget(err)
+
         self._info_layout.addStretch()
+
+        if auth_service.has_permission("customers.edit"):
+            cid = self._customer_id
+            btn_edit = QPushButton("✎  עריכת פרטי לקוח")
+            btn_edit.setFixedHeight(36)
+            btn_edit.setMaximumWidth(200)
+            btn_edit.clicked.connect(lambda: self.edit_requested.emit(cid))
+            self._info_layout.addWidget(btn_edit, alignment=Qt.AlignmentFlag.AlignLeft)
 
     # ── Treatments tab ────────────────────────────────────────
 
