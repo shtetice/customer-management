@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QMessageBox, QFrame, QMenu, QScrollArea, QSizePolicy,
-    QTextEdit
+    QTextEdit, QDialog, QLineEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QBrush, QColor, QCursor
@@ -209,14 +209,9 @@ class CustomerDetailScreen(QWidget):
         c = customer_controller.get_by_id(self._customer_id)
         if not c:
             return
-        reply = QMessageBox.question(
-            self,
-            "אישור מחיקה",
-            f"האם אתה בטוח שברצונך למחוק את {c.name} {c.surname}?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+
+        dlg = _DeleteConfirmDialog(c.name, c.surname, parent=self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             try:
                 customer_controller.delete(self._customer_id)
                 self.back_requested.emit()
@@ -730,3 +725,81 @@ class CustomerDetailScreen(QWidget):
         item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         item.setForeground(QBrush(QColor("#2c3e50")))
         return item
+
+
+class _DeleteConfirmDialog(QDialog):
+    def __init__(self, first_name: str, last_name: str, parent=None):
+        super().__init__(parent)
+        self._first_name = first_name
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.setWindowTitle("אישור מחיקה")
+        self.setFixedWidth(380)
+        self.setModal(True)
+        self._build_ui(first_name, last_name)
+
+    def _build_ui(self, first_name: str, last_name: str):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(14)
+        layout.setContentsMargins(24, 24, 24, 24)
+
+        # Warning icon + title
+        title = QLabel("⚠️  מחיקת לקוח")
+        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        title.setStyleSheet("color: #c0392b;")
+        layout.addWidget(title)
+
+        msg = QLabel(
+            f"פעולה זו תמחק לצמיתות את <b>{first_name} {last_name}</b> "
+            f"וכל הנתונים המשויכים (טיפולים, קבלות, יצירות קשר).<br><br>"
+            f"כדי לאשר, הקלד את השם הפרטי של הלקוח:"
+        )
+        msg.setWordWrap(True)
+        msg.setStyleSheet("font-size: 13px; color: #2c3e50;")
+        msg.setTextFormat(Qt.TextFormat.RichText)
+        layout.addWidget(msg)
+
+        self._name_input = QLineEdit()
+        self._name_input.setPlaceholderText(f"הקלד: {first_name}")
+        self._name_input.setMinimumHeight(36)
+        self._name_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc; border-radius: 5px;
+                padding: 6px 10px; font-size: 13px;
+                background: white; color: #2c3e50;
+            }
+            QLineEdit:focus { border-color: #e74c3c; }
+        """)
+        self._name_input.textChanged.connect(self._on_text_changed)
+        layout.addWidget(self._name_input)
+
+        # Buttons
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+
+        btn_cancel = QPushButton("ביטול")
+        btn_cancel.setFixedHeight(34)
+        btn_cancel.setStyleSheet(
+            "background:#ecf0f1; color:#555; border:1px solid #ccc; border-radius:4px; padding: 0 16px;"
+        )
+        btn_cancel.clicked.connect(self.reject)
+        btn_row.addWidget(btn_cancel)
+
+        self._btn_delete = QPushButton("מחק לצמיתות")
+        self._btn_delete.setFixedHeight(34)
+        self._btn_delete.setEnabled(False)
+        self._btn_delete.setStyleSheet("""
+            QPushButton {
+                background: #e74c3c; color: white;
+                border: none; border-radius: 4px;
+                font-size: 13px; font-weight: bold; padding: 0 16px;
+            }
+            QPushButton:hover { background: #c0392b; }
+            QPushButton:disabled { background: #f5b7b1; color: white; }
+        """)
+        self._btn_delete.clicked.connect(self.accept)
+        btn_row.addWidget(self._btn_delete)
+
+        layout.addLayout(btn_row)
+
+    def _on_text_changed(self, text: str):
+        self._btn_delete.setEnabled(text.strip() == self._first_name)
