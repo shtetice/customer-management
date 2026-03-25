@@ -13,7 +13,7 @@ from ui.styles import APP_STYLE
 
 def open_main_window():
     window = MainWindow()
-    window.show()
+    window.showMaximized()
     return window
 
 
