@@ -42,5 +42,8 @@ build/
 uploads/
 files/
 
+# Local settings (contains folder paths and backup password — do not commit)
+settings.json
+
 # OS
 Thumbs.db

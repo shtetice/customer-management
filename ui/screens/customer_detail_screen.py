@@ -1,6 +1,10 @@
 import os
+import shutil
 import subprocess
 import sys
+
+# Resolve app root so photo paths work regardless of working directory
+_APP_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
@@ -30,6 +34,7 @@ class CustomerDetailScreen(QWidget):
     def __init__(self, customer_id: int):
         super().__init__()
         self._customer_id = customer_id
+        self._profile_photo_path = ""  # cached after _refresh_summary
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self._build_ui()
 
@@ -168,8 +173,11 @@ class CustomerDetailScreen(QWidget):
         self._name_label.setText(full_name)
         self._customer_name = full_name
 
+        # Cache photo path so mouse events don't need a DB round-trip
+        self._profile_photo_path = c.profile_photo_path or ""
+
         # Avatar: photo if available, otherwise initials in a colored circle
-        photo_path = c.profile_photo_path
+        photo_path = self._profile_photo_path
         if photo_path and os.path.isfile(photo_path):
             pixmap = self._make_circular_photo(photo_path, 56)
             self._avatar_label.setPixmap(pixmap)
@@ -219,8 +227,7 @@ class CustomerDetailScreen(QWidget):
                 QMessageBox.critical(self, "שגיאה", str(e))
 
     def _avatar_mouse_press(self, event):
-        c = customer_controller.get_by_id(self._customer_id)
-        has_photo = bool(c and c.profile_photo_path and os.path.isfile(c.profile_photo_path))
+        has_photo = bool(self._profile_photo_path and os.path.isfile(self._profile_photo_path))
 
         if event.button() == Qt.MouseButton.RightButton:
             menu = QMenu(self)
@@ -237,10 +244,9 @@ class CustomerDetailScreen(QWidget):
                 self._pick_profile_photo()
 
     def _show_photo_enlarged(self):
-        c = customer_controller.get_by_id(self._customer_id)
-        if not c or not c.profile_photo_path or not os.path.isfile(c.profile_photo_path):
+        if not self._profile_photo_path or not os.path.isfile(self._profile_photo_path):
             return
-        dlg = _PhotoViewerDialog(c.profile_photo_path, self._customer_name, parent=self)
+        dlg = _PhotoViewerDialog(self._profile_photo_path, self._customer_name, parent=self)
         dlg.exec()
 
     def _pick_profile_photo(self):
@@ -250,10 +256,9 @@ class CustomerDetailScreen(QWidget):
         )
         if not path:
             return
-        # Copy to uploads/photos/<customer_id>/
-        import shutil
+        # Copy to <app_root>/uploads/photos/<customer_id>/
         ext = os.path.splitext(path)[1].lower()
-        dest_dir = os.path.join("uploads", "photos", str(self._customer_id))
+        dest_dir = os.path.join(_APP_ROOT, "uploads", "photos", str(self._customer_id))
         os.makedirs(dest_dir, exist_ok=True)
         dest = os.path.join(dest_dir, f"profile{ext}")
         shutil.copy2(path, dest)
@@ -1127,5 +1132,9 @@ class _PhotoViewerDialog(QDialog):
             super().keyPressEvent(event)
 
     def mousePressEvent(self, event):
-        self.accept()
+        # Only close when clicking the dialog background, not child widgets
+        if self.childAt(event.pos()) is None:
+            self.accept()
+        else:
+            super().mousePressEvent(event)
 
