@@ -219,13 +219,29 @@ class CustomerDetailScreen(QWidget):
                 QMessageBox.critical(self, "שגיאה", str(e))
 
     def _avatar_mouse_press(self, event):
+        c = customer_controller.get_by_id(self._customer_id)
+        has_photo = bool(c and c.profile_photo_path and os.path.isfile(c.profile_photo_path))
+
         if event.button() == Qt.MouseButton.RightButton:
             menu = QMenu(self)
-            menu.addAction("שנה תמונה", self._pick_profile_photo)
-            menu.addAction("הסר תמונה", self._remove_profile_photo)
+            if has_photo:
+                menu.addAction("🔍  הגדל תמונה", self._show_photo_enlarged)
+            menu.addAction("📷  שנה תמונה", self._pick_profile_photo)
+            if has_photo:
+                menu.addAction("🗑  הסר תמונה", self._remove_profile_photo)
             menu.exec(QCursor.pos())
         else:
-            self._pick_profile_photo()
+            if has_photo:
+                self._show_photo_enlarged()
+            else:
+                self._pick_profile_photo()
+
+    def _show_photo_enlarged(self):
+        c = customer_controller.get_by_id(self._customer_id)
+        if not c or not c.profile_photo_path or not os.path.isfile(c.profile_photo_path):
+            return
+        dlg = _PhotoViewerDialog(c.profile_photo_path, self._customer_name, parent=self)
+        dlg.exec()
 
     def _pick_profile_photo(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -1059,3 +1075,57 @@ class _DeleteConfirmDialog(_ConfirmByTypingDialog):
             confirm_label="מחק לצמיתות",
             parent=parent,
         )
+
+
+class _PhotoViewerDialog(QDialog):
+    """Full-size photo viewer — click anywhere or press Escape to close."""
+
+    def __init__(self, photo_path: str, customer_name: str, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(customer_name)
+        self.setWindowFlags(
+            Qt.WindowType.Dialog |
+            Qt.WindowType.WindowCloseButtonHint |
+            Qt.WindowType.WindowStaysOnTopHint
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
+
+        # Load and scale image to fit within 600×600 while keeping aspect ratio
+        pixmap = QPixmap(photo_path)
+        if not pixmap.isNull():
+            max_size = 600
+            if pixmap.width() > max_size or pixmap.height() > max_size:
+                pixmap = pixmap.scaled(
+                    max_size, max_size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+
+        img_label = QLabel()
+        img_label.setPixmap(pixmap)
+        img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(img_label)
+
+        btn_close = QPushButton("סגור")
+        btn_close.setFixedWidth(100)
+        btn_close.clicked.connect(self.accept)
+        row = QHBoxLayout()
+        row.addStretch()
+        row.addWidget(btn_close)
+        layout.addLayout(row)
+
+        self.adjustSize()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.accept()
+        else:
+            super().keyPressEvent(event)
+
+    def mousePressEvent(self, event):
+        self.accept()
+
