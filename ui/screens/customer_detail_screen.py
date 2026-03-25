@@ -273,12 +273,12 @@ class CustomerDetailScreen(QWidget):
         row = grid.rowCount()
         lbl = QLabel(label.upper())
         lbl.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        lbl.setStyleSheet(
-            "font-size: 14px; font-weight: bold; color: #95a5a6; "
-            "letter-spacing: 0.5px; background: transparent; border: none;"
-        )
+        # Use setFont so that sizeHint() reflects the actual rendered size
+        lbl.setFont(QFont("Arial", 10, QFont.Weight.Bold))
+        lbl.setStyleSheet("color: #95a5a6; letter-spacing: 0.5px; background: transparent; border: none;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
-        lbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        # Minimum: can grow, but never narrower than the text needs
+        lbl.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
 
         val = QLabel(value if value else "—")
         val.setWordWrap(True)
