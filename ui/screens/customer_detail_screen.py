@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView,
-    QAbstractItemView, QMessageBox, QFrame, QMenu
+    QAbstractItemView, QMessageBox, QFrame, QMenu, QScrollArea
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont, QBrush, QColor, QCursor
@@ -17,6 +17,7 @@ from ui.styles import STATUS_LABELS, STATUS_COLORS
 
 class CustomerDetailScreen(QWidget):
     back_requested = pyqtSignal()
+    edit_requested = pyqtSignal(int)  # customer_id
 
     def __init__(self, customer_id: int):
         super().__init__()
@@ -88,6 +89,7 @@ class CustomerDetailScreen(QWidget):
             QTabBar::tab:hover { background:#d5dbdb; }
         """)
 
+        self.tabs.addTab(self._build_info_tab(), "פרטי לקוח")
         self.tabs.addTab(self._build_treatments_tab(), "היסטוריית טיפולים")
         self.tabs.addTab(self._build_receipts_tab(), "קבלות")
         layout.addWidget(self.tabs)
@@ -110,6 +112,85 @@ class CustomerDetailScreen(QWidget):
         phones = [p for p in [c.phone, c.phone2, c.phone3] if p]
         self._phone_label.setText("📞 " + " | ".join(phones) if phones else "")
         self._email_label.setText("✉ " + c.email if c.email else "")
+
+    # ── Info tab ──────────────────────────────────────────────
+
+    def _build_info_tab(self) -> QWidget:
+        widget = QWidget()
+        outer = QVBoxLayout(widget)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        # Scroll area so content never gets clipped
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self._info_content = QWidget()
+        self._info_layout = QVBoxLayout(self._info_content)
+        self._info_layout.setSpacing(10)
+        self._info_layout.setContentsMargins(20, 16, 20, 16)
+
+        scroll.setWidget(self._info_content)
+        outer.addWidget(scroll)
+
+        if auth_service.has_permission("customers.edit"):
+            btn_row = QWidget()
+            btn_row_layout = QHBoxLayout(btn_row)
+            btn_row_layout.setContentsMargins(20, 8, 20, 12)
+            btn_edit = QPushButton("✎  עריכת פרטי לקוח")
+            btn_edit.setFixedHeight(36)
+            btn_edit.setMaximumWidth(200)
+            cid = self._customer_id
+            btn_edit.clicked.connect(lambda: self.edit_requested.emit(cid))
+            btn_row_layout.addWidget(btn_edit)
+            btn_row_layout.addStretch()
+            outer.addWidget(btn_row)
+
+        self._refresh_info()
+        return widget
+
+    def _refresh_info(self):
+        # Clear previous content
+        while self._info_layout.count():
+            item = self._info_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        c = customer_controller.get_by_id(self._customer_id)
+        if not c:
+            return
+
+        from database.models import Gender
+        GENDER_LABELS = {Gender.MALE: "זכר", Gender.FEMALE: "נקבה", Gender.OTHER: "אחר"}
+
+        LABEL_STYLE = "color: #888; font-size: 12px; margin-bottom: 1px;"
+        VALUE_STYLE = "color: #2c3e50; font-size: 13px;"
+        EMPTY_STYLE = "color: #bbb; font-size: 13px; font-style: italic;"
+
+        def add_row(label: str, value: str):
+            lbl = QLabel(label)
+            lbl.setStyleSheet(LABEL_STYLE)
+            val = QLabel(value if value else "—")
+            val.setStyleSheet(VALUE_STYLE if value else EMPTY_STYLE)
+            val.setWordWrap(True)
+            self._info_layout.addWidget(lbl)
+            self._info_layout.addWidget(val)
+            sep = QFrame()
+            sep.setFrameShape(QFrame.Shape.HLine)
+            sep.setStyleSheet("color: #f0f0f0; margin: 4px 0;")
+            self._info_layout.addWidget(sep)
+
+        phones = [p for p in [c.phone, c.phone2, c.phone3] if p]
+        add_row("טלפון", " | ".join(phones))
+        add_row("אימייל", c.email or "")
+        add_row("כתובת", c.address or "")
+        dob = c.date_of_birth.strftime("%d/%m/%Y") if c.date_of_birth else ""
+        add_row("תאריך לידה", dob)
+        add_row("מגדר", GENDER_LABELS.get(c.gender, "") if c.gender else "")
+        add_row("הערות", c.notes or "")
+        self._info_layout.addStretch()
 
     # ── Treatments tab ────────────────────────────────────────
 
@@ -150,7 +231,7 @@ class CustomerDetailScreen(QWidget):
             self.treatments_table.setItem(i, 2, self._cell(t.performed_by or ""))
             self.treatments_table.setItem(i, 3, self._cell(t.notes or ""))
             self.treatments_table.setCellWidget(i, 4, self._treatment_actions(t.id))
-            self.treatments_table.setRowHeight(i, 44)
+            self.treatments_table.setRowHeight(i, 46)
 
     def _treatment_actions(self, treatment_id: int) -> QWidget:
         w = QWidget()
@@ -263,7 +344,7 @@ class CustomerDetailScreen(QWidget):
                 linked = f"{t.date.strftime('%d/%m/%Y')} — {t.description}"
             self.receipts_table.setItem(i, 3, self._cell(linked))
             self.receipts_table.setCellWidget(i, 4, self._receipt_actions(r.id))
-            self.receipts_table.setRowHeight(i, 44)
+            self.receipts_table.setRowHeight(i, 46)
 
     def _receipt_actions(self, receipt_id: int) -> QWidget:
         w = QWidget()
@@ -340,6 +421,7 @@ class CustomerDetailScreen(QWidget):
         t.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         t.setAlternatingRowColors(True)
         t.verticalHeader().setVisible(False)
+        t.verticalHeader().setDefaultSectionSize(46)
         return t
 
     def _cell(self, text: str) -> QTableWidgetItem:
