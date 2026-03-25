@@ -1,9 +1,9 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QComboBox, QMessageBox, QAbstractItemView, QMenu
+    QComboBox, QMessageBox, QAbstractItemView
 )
-from PyQt6.QtGui import QColor, QFont, QBrush, QCursor
+from PyQt6.QtGui import QColor, QFont, QBrush
 from PyQt6.QtCore import Qt, pyqtSignal
 
 from database.models import CustomerStatus
@@ -169,16 +169,16 @@ class CustomerListScreen(QWidget):
             status_item.setFont(font)
             self.table.setItem(row_idx, 4, status_item)
 
-            # Action dropdown
+            # Details button
             actions_widget = QWidget()
             actions_layout = QHBoxLayout(actions_widget)
             actions_layout.setContentsMargins(8, 4, 8, 4)
             actions_layout.addStretch()
 
-            btn_menu = QPushButton("פעולות ▾")
-            btn_menu.setFixedHeight(28)
-            btn_menu.setMinimumWidth(80)
-            btn_menu.setStyleSheet("""
+            btn_details = QPushButton("👁  פרטים")
+            btn_details.setFixedHeight(28)
+            btn_details.setMinimumWidth(80)
+            btn_details.setStyleSheet("""
                 QPushButton {
                     background: #f0f4f8; color: #2c3e50;
                     border: 1px solid #bdc3c7; border-radius: 5px;
@@ -186,35 +186,8 @@ class CustomerListScreen(QWidget):
                 }
                 QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
             """)
-
-            def make_menu(cid=customer.id):
-                menu = QMenu(self)
-                menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-                menu.setStyleSheet("""
-                    QMenu {
-                        background: white; border: 1px solid #ddd;
-                        border-radius: 6px; padding: 4px;
-                        font-size: 13px;
-                    }
-                    QMenu::item {
-                        padding: 7px 20px; border-radius: 4px; color: #2c3e50;
-                    }
-                    QMenu::item:selected { background: #f0f4f8; }
-                    QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
-                """)
-                menu.addAction("👁  פרטים", lambda: self.request_view_customer.emit(cid))
-                if auth_service.has_permission("customers.delete"):
-                    menu.addSeparator()
-                    delete_action = menu.addAction("✕  מחק", lambda: self._confirm_delete(cid))
-                    delete_action.setData("danger")
-                    font = delete_action.font()
-                    delete_action.setFont(font)
-                    # Style delete in red via a separate setStyleSheet is not supported per-item;
-                    # use font color via HTML workaround isn't available — keep it grouped at bottom
-                menu.exec(QCursor.pos())
-
-            btn_menu.clicked.connect(lambda checked=False, m=make_menu: m())
-            actions_layout.addWidget(btn_menu)
+            btn_details.clicked.connect(lambda checked=False, cid=customer.id: self.request_view_customer.emit(cid))
+            actions_layout.addWidget(btn_details)
 
             self.table.setCellWidget(row_idx, 5, actions_widget)
             self.table.setRowHeight(row_idx, 46)

@@ -99,7 +99,10 @@ class CustomerDetailScreen(QWidget):
 
         card_layout.addLayout(contact_col)
 
-        # Edit button (top-right)
+        # Edit / Delete buttons (top-right)
+        btn_col = QVBoxLayout()
+        btn_col.setSpacing(6)
+
         if auth_service.has_permission("customers.edit"):
             self._card_edit_btn = QPushButton("✎  עריכה")
             self._card_edit_btn.setFixedHeight(32)
@@ -114,7 +117,25 @@ class CustomerDetailScreen(QWidget):
             """)
             cid = self._customer_id
             self._card_edit_btn.clicked.connect(lambda: self.edit_requested.emit(cid))
-            card_layout.addWidget(self._card_edit_btn, alignment=Qt.AlignmentFlag.AlignTop)
+            btn_col.addWidget(self._card_edit_btn)
+
+        if auth_service.has_permission("customers.delete"):
+            btn_delete = QPushButton("✕  מחק")
+            btn_delete.setFixedHeight(32)
+            btn_delete.setMinimumWidth(90)
+            btn_delete.setStyleSheet("""
+                QPushButton {
+                    background: #fdf2f2; color: #e74c3c;
+                    border: 1px solid #f5c6c6; border-radius: 6px;
+                    font-size: 12px; padding: 0 12px;
+                }
+                QPushButton:hover { background: #fce8e8; border-color: #e74c3c; }
+            """)
+            btn_delete.clicked.connect(self._confirm_delete)
+            btn_col.addWidget(btn_delete)
+
+        btn_col.addStretch()
+        card_layout.addLayout(btn_col)
 
         layout.addWidget(self._summary_card)
         self._customer_name = ""
@@ -182,6 +203,25 @@ class CustomerDetailScreen(QWidget):
         phones = [p for p in [c.phone, c.phone2, c.phone3] if p]
         self._phone_label.setText("📞  " + "  |  ".join(phones) if phones else "")
         self._email_label.setText("✉   " + c.email if c.email else "")
+
+    def _confirm_delete(self):
+        from controllers.customer_controller import customer_controller
+        c = customer_controller.get_by_id(self._customer_id)
+        if not c:
+            return
+        reply = QMessageBox.question(
+            self,
+            "אישור מחיקה",
+            f"האם אתה בטוח שברצונך למחוק את {c.name} {c.surname}?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                customer_controller.delete(self._customer_id)
+                self.back_requested.emit()
+            except Exception as e:
+                QMessageBox.critical(self, "שגיאה", str(e))
 
     # ── Info tab ──────────────────────────────────────────────
 
