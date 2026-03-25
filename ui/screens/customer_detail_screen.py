@@ -73,6 +73,7 @@ class CustomerDetailScreen(QWidget):
         # Name + status column
         name_col = QVBoxLayout()
         name_col.setSpacing(4)
+        name_col.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         self._name_label = QLabel()
         self._name_label.setFont(QFont("Arial", 17, QFont.Weight.Bold))
         self._name_label.setStyleSheet("color:#1a2533; border:none; background:transparent;")
@@ -106,6 +107,7 @@ class CustomerDetailScreen(QWidget):
         # Edit / Delete buttons (top-right)
         btn_col = QVBoxLayout()
         btn_col.setSpacing(6)
+        btn_col.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         if auth_service.has_permission("customers.edit"):
             self._card_edit_btn = QPushButton("✎  עריכה")
@@ -138,9 +140,9 @@ class CustomerDetailScreen(QWidget):
             btn_delete.clicked.connect(self._confirm_delete)
             btn_col.addWidget(btn_delete)
 
-        btn_col.addStretch()
         card_layout.addLayout(btn_col)
 
+        self._summary_card.setMaximumHeight(110)
         layout.addWidget(self._summary_card)
         self._customer_name = ""
         self._refresh_summary()
@@ -162,7 +164,7 @@ class CustomerDetailScreen(QWidget):
         self.tabs.addTab(self._build_treatments_tab(), "היסטוריית טיפולים")
         self.tabs.addTab(self._build_receipts_tab(), "קבלות")
         self.tabs.addTab(self._build_contact_tab(), "יצירת קשר")
-        layout.addWidget(self.tabs)
+        layout.addWidget(self.tabs, 1)
 
     # ── Summary card ──────────────────────────────────────────
 
