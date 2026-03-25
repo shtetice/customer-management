@@ -112,15 +112,9 @@ class CustomerListScreen(QWidget):
         self.search_input.textChanged.connect(self._refresh)
         search_row.addWidget(self.search_input, stretch=1)
 
-        layout.addLayout(search_row)
-
-        # Filter row: status + birth month + birth year + city — all on one line
-        filter_row = QHBoxLayout()
-        filter_row.setSpacing(8)
-
         status_label = QLabel("סטטוס:")
         status_label.setStyleSheet("color: #555; font-size: 13px;")
-        filter_row.addWidget(status_label)
+        search_row.addWidget(status_label)
 
         self.status_filter = QComboBox()
         self.status_filter.setMinimumHeight(34)
@@ -129,7 +123,13 @@ class CustomerListScreen(QWidget):
         for s in CustomerStatus:
             self.status_filter.addItem(STATUS_LABELS[s.value], s)
         self.status_filter.currentIndexChanged.connect(self._refresh)
-        filter_row.addWidget(self.status_filter)
+        search_row.addWidget(self.status_filter)
+
+        layout.addLayout(search_row)
+
+        # Filter row: birth month + birth year + city + gender
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(8)
 
         month_label = QLabel("חודש לידה:")
         month_label.setStyleSheet("color: #555; font-size: 13px;")
