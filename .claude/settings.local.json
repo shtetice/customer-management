@@ -47,7 +47,10 @@
       "Bash(sed -i '' '/btn_details\\\\.setStyleSheet\\(\"\"\"\"\\)/d' ui/screens/customer_list_screen.py)",
       "Bash(sed -i '' '/title\\\\.setStyleSheet\\(\"\"\"\"\\)/d' ui/screens/customer_list_screen.py)",
       "Bash(python -c \"from ui.screens.user_management_screen import UserManagementScreen; print\\(''OK''\\)\")",
-      "Bash(python3 -c \"from ui.screens.user_management_screen import UserManagementScreen; print\\(''OK''\\)\")"
+      "Bash(python3 -c \"from ui.screens.user_management_screen import UserManagementScreen; print\\(''OK''\\)\")",
+      "Bash(pip install:*)",
+      "Bash(python3 -c \"import openpyxl, msoffcrypto; print\\(''OK''\\)\")",
+      "Bash(\"/Users/tzahmalka/Documents/Claude projects/Customer management/ui/screens/customer_detail_screen.py\")"
     ]
   }
 }

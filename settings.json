@@ -1,3 +1,6 @@
 {
-  "receipts_folder": "/Users/tzahmalka/Downloads"
+  "receipts_folder": "/Users/tzahmalka/Downloads",
+  "backup_folder": "/Users/tzahmalka/Downloads",
+  "backup_password": "123",
+  "last_backup_time": "2026-03-25T22:52:04.926677"
 }
