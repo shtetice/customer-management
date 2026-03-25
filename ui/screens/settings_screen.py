@@ -54,6 +54,11 @@ class SettingsScreen(QWidget):
         btn_browse = QPushButton("בחר תיקייה")
         btn_browse.setFixedHeight(36)
         btn_browse.setMinimumWidth(110)
+        btn_browse.setStyleSheet("""
+            QPushButton { background: #3498db; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #2980b9; }
+        """)
         btn_browse.clicked.connect(self._browse)
         row.addWidget(btn_browse)
 
