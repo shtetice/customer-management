@@ -88,13 +88,13 @@ class CustomerListScreen(QWidget):
 
         layout.addLayout(header_row)
 
-        # Filter row 1: search + status
-        filter_row1 = QHBoxLayout()
-        filter_row1.setSpacing(12)
+        # Search row
+        search_row = QHBoxLayout()
+        search_row.setSpacing(12)
 
         search_label = QLabel("🔍  חיפוש:")
         search_label.setStyleSheet("color: #555; font-size: 13px;")
-        filter_row1.addWidget(search_label)
+        search_row.addWidget(search_label)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("שם, טלפון או אימייל...")
@@ -110,67 +110,65 @@ class CustomerListScreen(QWidget):
             QLineEdit:focus { border-color: #3498db; }
         """)
         self.search_input.textChanged.connect(self._refresh)
-        filter_row1.addWidget(self.search_input, stretch=3)
+        search_row.addWidget(self.search_input, stretch=1)
+
+        layout.addLayout(search_row)
+
+        # Filter row: status + birth month + birth year + city — all on one line
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(8)
 
         status_label = QLabel("סטטוס:")
         status_label.setStyleSheet("color: #555; font-size: 13px;")
-        filter_row1.addWidget(status_label)
+        filter_row.addWidget(status_label)
 
         self.status_filter = QComboBox()
         self.status_filter.setMinimumHeight(34)
-        self.status_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 140px; }")
+        self.status_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 120px; }")
         self.status_filter.addItem("כל הסטטוסים", None)
         for s in CustomerStatus:
             self.status_filter.addItem(STATUS_LABELS[s.value], s)
         self.status_filter.currentIndexChanged.connect(self._refresh)
-        filter_row1.addWidget(self.status_filter, stretch=1)
-
-        layout.addLayout(filter_row1)
-
-        # Filter row 2: birth month, birth year, city
-        filter_row2 = QHBoxLayout()
-        filter_row2.setSpacing(12)
+        filter_row.addWidget(self.status_filter)
 
         month_label = QLabel("חודש לידה:")
         month_label.setStyleSheet("color: #555; font-size: 13px;")
-        filter_row2.addWidget(month_label)
+        filter_row.addWidget(month_label)
 
         self.month_filter = QComboBox()
         self.month_filter.setMinimumHeight(34)
-        self.month_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 120px; }")
+        self.month_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 100px; }")
         self.month_filter.addItem("כל החודשים", None)
         for i, name in enumerate(self._HEBREW_MONTHS, start=1):
             self.month_filter.addItem(name, i)
         self.month_filter.currentIndexChanged.connect(self._refresh)
-        filter_row2.addWidget(self.month_filter)
+        filter_row.addWidget(self.month_filter)
 
         year_label = QLabel("שנת לידה:")
         year_label.setStyleSheet("color: #555; font-size: 13px;")
-        filter_row2.addWidget(year_label)
+        filter_row.addWidget(year_label)
 
         self.year_filter = QComboBox()
         self.year_filter.setMinimumHeight(34)
-        self.year_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 100px; }")
+        self.year_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 90px; }")
         self.year_filter.addItem("כל השנים", None)
-        filter_row2.addWidget(self.year_filter)
+        self.year_filter.currentIndexChanged.connect(self._refresh)
+        filter_row.addWidget(self.year_filter)
 
         city_label = QLabel("עיר:")
         city_label.setStyleSheet("color: #555; font-size: 13px;")
-        filter_row2.addWidget(city_label)
+        filter_row.addWidget(city_label)
 
         self.city_filter = QComboBox()
         self.city_filter.setMinimumHeight(34)
-        self.city_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 130px; }")
+        self.city_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 110px; }")
         self.city_filter.addItem("כל הערים", None)
-        filter_row2.addWidget(self.city_filter)
-
-        filter_row2.addStretch()
-
-        layout.addLayout(filter_row2)
-
-        # Connect year/city after they're created
-        self.year_filter.currentIndexChanged.connect(self._refresh)
         self.city_filter.currentIndexChanged.connect(self._refresh)
+        filter_row.addWidget(self.city_filter)
+
+        filter_row.addStretch()
+
+        layout.addLayout(filter_row)
 
         # Table
         self.table = QTableWidget()
