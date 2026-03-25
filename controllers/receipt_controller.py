@@ -1,6 +1,10 @@
+import os
+import shutil
 from datetime import datetime
 from database.db import get_session
 from database.models import Receipt
+
+RECEIPTS_UPLOAD_DIR = os.path.join("uploads", "receipts")
 
 
 class ReceiptController:
@@ -37,6 +41,7 @@ class ReceiptController:
         amount: str,
         description: str,
         treatment_id: int | None = None,
+        pdf_source_path: str | None = None,
     ) -> Receipt:
         self._validate(amount)
         session = get_session()
@@ -51,6 +56,10 @@ class ReceiptController:
             session.add(receipt)
             session.commit()
             session.refresh(receipt)
+            if pdf_source_path:
+                receipt.pdf_path = self._store_pdf(pdf_source_path, receipt.id, date)
+                session.commit()
+                session.refresh(receipt)
             session.expunge(receipt)
             return receipt
         finally:
@@ -63,6 +72,8 @@ class ReceiptController:
         amount: str,
         description: str,
         treatment_id: int | None = None,
+        pdf_source_path: str | None = None,
+        clear_pdf: bool = False,
     ) -> Receipt:
         self._validate(amount)
         session = get_session()
@@ -74,12 +85,23 @@ class ReceiptController:
             r.amount = amount.strip()
             r.description = description.strip() if description else None
             r.treatment_id = treatment_id
+            if clear_pdf:
+                r.pdf_path = None
+            elif pdf_source_path:
+                r.pdf_path = self._store_pdf(pdf_source_path, r.id, date)
             session.commit()
             session.refresh(r)
             session.expunge(r)
             return r
         finally:
             session.close()
+
+    def _store_pdf(self, source_path: str, receipt_id: int, date: datetime) -> str:
+        os.makedirs(RECEIPTS_UPLOAD_DIR, exist_ok=True)
+        filename = f"receipt_{receipt_id}_{date.strftime('%Y%m%d')}.pdf"
+        dest = os.path.join(RECEIPTS_UPLOAD_DIR, filename)
+        shutil.copy2(source_path, dest)
+        return dest
 
     def delete(self, receipt_id: int):
         session = get_session()

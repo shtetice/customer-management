@@ -79,6 +79,7 @@ class Receipt(Base):
     amount = Column(String(20), nullable=False)
     description = Column(Text, nullable=True)
     date = Column(DateTime, nullable=False, default=datetime.utcnow)
+    pdf_path = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     customer = relationship("Customer", back_populates="receipts")

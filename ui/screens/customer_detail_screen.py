@@ -1,3 +1,7 @@
+import os
+import subprocess
+import sys
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView,
@@ -541,10 +545,10 @@ class CustomerDetailScreen(QWidget):
                 t = treatments[r.treatment_id]
                 linked = f"{t.date.strftime('%d/%m/%Y')} — {t.description}"
             self.receipts_table.setItem(i, 3, self._cell(linked))
-            self.receipts_table.setCellWidget(i, 4, self._receipt_actions(r.id))
+            self.receipts_table.setCellWidget(i, 4, self._receipt_actions(r.id, r.pdf_path))
             self.receipts_table.setRowHeight(i, 46)
 
-    def _receipt_actions(self, receipt_id: int) -> QWidget:
+    def _receipt_actions(self, receipt_id: int, pdf_path: str | None = None) -> QWidget:
         w = QWidget()
         row = QHBoxLayout(w)
         row.setContentsMargins(8, 4, 8, 4)
@@ -565,7 +569,7 @@ class CustomerDetailScreen(QWidget):
             QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
         """)
 
-        def open_menu(checked=False, rid=receipt_id):
+        def open_menu(checked=False, rid=receipt_id, pdf=pdf_path):
             menu = QMenu(self)
             menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
             menu.setStyleSheet("""
@@ -577,6 +581,9 @@ class CustomerDetailScreen(QWidget):
                 QMenu::item:selected { background: #f0f4f8; }
                 QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
             """)
+            if pdf and os.path.isfile(pdf):
+                menu.addAction("📄  פתח PDF", lambda: self._open_pdf(pdf))
+                menu.addSeparator()
             menu.addAction("✎  עריכה", lambda: self._edit_receipt(rid))
             menu.addSeparator()
             menu.addAction("✕  מחק", lambda: self._delete_receipt(rid))
@@ -585,6 +592,17 @@ class CustomerDetailScreen(QWidget):
         btn.clicked.connect(open_menu)
         row.addWidget(btn)
         return w
+
+    def _open_pdf(self, path: str):
+        try:
+            if sys.platform == "win32":
+                os.startfile(path)
+            elif sys.platform == "darwin":
+                subprocess.run(["open", path], check=True)
+            else:
+                subprocess.run(["xdg-open", path], check=True)
+        except Exception as e:
+            QMessageBox.critical(self, "שגיאה בפתיחת קובץ", str(e))
 
     def _add_receipt(self, treatment_id: int | None):
         dlg = AddReceiptDialog(self._customer_id, preselect_treatment_id=treatment_id, customer_name=self._customer_name, parent=self)

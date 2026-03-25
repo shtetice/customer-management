@@ -31,6 +31,13 @@ def _migrate():
                 conn.execute(text(
                     f"ALTER TABLE customers ADD COLUMN {col} {typedef}"
                 ))
+
+        receipts_cols = [row[1] for row in conn.execute(
+            text("PRAGMA table_info(receipts)")
+        )]
+        if "pdf_path" not in receipts_cols:
+            conn.execute(text("ALTER TABLE receipts ADD COLUMN pdf_path VARCHAR(500)"))
+
         conn.commit()
 
 

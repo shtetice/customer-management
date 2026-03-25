@@ -44,6 +44,9 @@ class AddReceiptDialog(QDialog):
         self._receipt_id = receipt_id
         self._preselect_treatment_id = preselect_treatment_id
         self._customer_name = customer_name
+        self._pdf_source_path: str | None = None   # newly selected PDF from disk
+        self._existing_pdf_path: str | None = None  # PDF already saved in DB
+        self._clear_pdf = False
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.setWindowTitle("עריכת קבלה" if receipt_id else "הוספת קבלה")
         self.setMinimumWidth(460)
@@ -101,6 +104,44 @@ class AddReceiptDialog(QDialog):
                     break
         layout.addWidget(self.treatment_combo)
 
+        # PDF attachment
+        layout.addWidget(self._lbl("קובץ PDF מצורף (אופציונלי)"))
+        pdf_row = QHBoxLayout()
+        pdf_row.setSpacing(8)
+
+        self._pdf_name_label = QLabel("לא נבחר קובץ")
+        self._pdf_name_label.setStyleSheet("font-size: 12px; color: #888;")
+        self._pdf_name_label.setWordWrap(False)
+        pdf_row.addWidget(self._pdf_name_label, stretch=1)
+
+        btn_pick_pdf = QPushButton("בחר PDF")
+        btn_pick_pdf.setFixedHeight(32)
+        btn_pick_pdf.setStyleSheet("""
+            QPushButton {
+                background: #f0f4f8; color: #2c3e50;
+                border: 1px solid #bdc3c7; border-radius: 4px;
+                font-size: 12px; padding: 0 10px;
+            }
+            QPushButton:hover { background: #d6eaf8; border-color: #3498db; }
+        """)
+        btn_pick_pdf.clicked.connect(self._pick_pdf)
+        pdf_row.addWidget(btn_pick_pdf)
+
+        self._btn_clear_pdf = QPushButton("✕")
+        self._btn_clear_pdf.setFixedSize(32, 32)
+        self._btn_clear_pdf.setStyleSheet("""
+            QPushButton {
+                background: #fdf2f2; color: #e74c3c;
+                border: 1px solid #f5c6c6; border-radius: 4px; font-size: 13px;
+            }
+            QPushButton:hover { background: #fce8e8; }
+        """)
+        self._btn_clear_pdf.setVisible(False)
+        self._btn_clear_pdf.clicked.connect(self._clear_pdf_selection)
+        pdf_row.addWidget(self._btn_clear_pdf)
+
+        layout.addLayout(pdf_row)
+
         # Error
         self.error_label = QLabel("")
         self.error_label.setStyleSheet("color: #e74c3c; font-size: 12px;")
@@ -143,6 +184,22 @@ class AddReceiptDialog(QDialog):
         l.setStyleSheet(LABEL_STYLE)
         return l
 
+    def _pick_pdf(self):
+        path, _ = QFileDialog.getOpenFileName(self, "בחר קובץ PDF", "", "PDF Files (*.pdf)")
+        if path:
+            self._pdf_source_path = path
+            self._clear_pdf = False
+            self._pdf_name_label.setText(os.path.basename(path))
+            self._pdf_name_label.setStyleSheet("font-size: 12px; color: #2c3e50;")
+            self._btn_clear_pdf.setVisible(True)
+
+    def _clear_pdf_selection(self):
+        self._pdf_source_path = None
+        self._clear_pdf = True
+        self._pdf_name_label.setText("לא נבחר קובץ")
+        self._pdf_name_label.setStyleSheet("font-size: 12px; color: #888;")
+        self._btn_clear_pdf.setVisible(False)
+
     def _load(self, receipt_id: int):
         try:
             r = receipt_controller.get_by_id(receipt_id)
@@ -156,6 +213,11 @@ class AddReceiptDialog(QDialog):
                 if self.treatment_combo.itemData(i) == r.treatment_id:
                     self.treatment_combo.setCurrentIndex(i)
                     break
+            if r.pdf_path and os.path.isfile(r.pdf_path):
+                self._existing_pdf_path = r.pdf_path
+                self._pdf_name_label.setText(os.path.basename(r.pdf_path))
+                self._pdf_name_label.setStyleSheet("font-size: 12px; color: #2c3e50;")
+                self._btn_clear_pdf.setVisible(True)
         except Exception as e:
             QMessageBox.critical(self, "שגיאה בטעינת קבלה", str(e))
 
@@ -171,10 +233,15 @@ class AddReceiptDialog(QDialog):
         try:
             if self._receipt_id:
                 receipt = receipt_controller.update(
-                    self._receipt_id, receipt_date, amount, description, treatment_id)
+                    self._receipt_id, receipt_date, amount, description, treatment_id,
+                    pdf_source_path=self._pdf_source_path,
+                    clear_pdf=self._clear_pdf,
+                )
             else:
                 receipt = receipt_controller.create(
-                    self._customer_id, receipt_date, amount, description, treatment_id)
+                    self._customer_id, receipt_date, amount, description, treatment_id,
+                    pdf_source_path=self._pdf_source_path,
+                )
             if export_file:
                 self._export_file(receipt, receipt_date, amount, description)
             self.saved.emit()
