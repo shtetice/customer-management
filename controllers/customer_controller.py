@@ -13,6 +13,7 @@ class CustomerController:
         birth_month: int | None = None,
         birth_year: int | None = None,
         city: str | None = None,
+        gender: Gender | None = None,
     ) -> list[Customer]:
         session = get_session()
         try:
@@ -25,6 +26,8 @@ class CustomerController:
                 q = q.filter(extract("year", Customer.date_of_birth) == birth_year)
             if city:
                 q = q.filter(Customer.city == city)
+            if gender:
+                q = q.filter(Customer.gender == gender)
             customers = q.order_by(Customer.surname, Customer.name).all()
             for c in customers:
                 session.expunge(c)
@@ -48,9 +51,10 @@ class CustomerController:
         birth_month: int | None = None,
         birth_year: int | None = None,
         city: str | None = None,
+        gender: Gender | None = None,
     ) -> list[Customer]:
         if not query or not query.strip():
-            return self.get_all(birth_month=birth_month, birth_year=birth_year, city=city)
+            return self.get_all(birth_month=birth_month, birth_year=birth_year, city=city, gender=gender)
         session = get_session()
         try:
             qp = f"%{query.strip()}%"
@@ -68,6 +72,8 @@ class CustomerController:
                 q = q.filter(extract("year", Customer.date_of_birth) == birth_year)
             if city:
                 q = q.filter(Customer.city == city)
+            if gender:
+                q = q.filter(Customer.gender == gender)
             customers = q.order_by(Customer.surname, Customer.name).all()
             for c in customers:
                 session.expunge(c)

@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QColor, QFont, QBrush
 from PyQt6.QtCore import Qt, pyqtSignal
 
-from database.models import CustomerStatus
+from database.models import CustomerStatus, Gender
 from controllers.customer_controller import customer_controller
 from services.auth_service import auth_service
 from ui.styles import STATUS_COLORS, STATUS_BG_COLORS, STATUS_LABELS
@@ -166,6 +166,20 @@ class CustomerListScreen(QWidget):
         self.city_filter.currentIndexChanged.connect(self._refresh)
         filter_row.addWidget(self.city_filter)
 
+        gender_label = QLabel("מגדר:")
+        gender_label.setStyleSheet("color: #555; font-size: 13px;")
+        filter_row.addWidget(gender_label)
+
+        self.gender_filter = QComboBox()
+        self.gender_filter.setMinimumHeight(34)
+        self.gender_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 90px; }")
+        self.gender_filter.addItem("הכל", None)
+        self.gender_filter.addItem("זכר", Gender.MALE)
+        self.gender_filter.addItem("נקבה", Gender.FEMALE)
+        self.gender_filter.addItem("אחר", Gender.OTHER)
+        self.gender_filter.currentIndexChanged.connect(self._refresh)
+        filter_row.addWidget(self.gender_filter)
+
         filter_row.addStretch()
 
         layout.addLayout(filter_row)
@@ -230,16 +244,17 @@ class CustomerListScreen(QWidget):
         birth_month = self.month_filter.currentData()
         birth_year = self.year_filter.currentData()
         city = self.city_filter.currentData()
+        gender = self.gender_filter.currentData()
 
         if query:
             customers = customer_controller.search(
-                query, birth_month=birth_month, birth_year=birth_year, city=city
+                query, birth_month=birth_month, birth_year=birth_year, city=city, gender=gender
             )
             if status:
                 customers = [c for c in customers if c.status == status]
         else:
             customers = customer_controller.get_all(
-                status=status, birth_month=birth_month, birth_year=birth_year, city=city
+                status=status, birth_month=birth_month, birth_year=birth_year, city=city, gender=gender
             )
 
         self._current_customers = customers
