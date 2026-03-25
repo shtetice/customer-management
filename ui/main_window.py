@@ -9,6 +9,7 @@ from ui.screens.customer_list_screen import CustomerListScreen
 from ui.screens.add_customer_screen import AddCustomerScreen
 from ui.screens.customer_detail_screen import CustomerDetailScreen
 from ui.screens.settings_screen import SettingsScreen
+from ui.screens.user_management_screen import UserManagementScreen
 from ui.styles import APP_STYLE
 from services.auth_service import auth_service
 
@@ -47,6 +48,7 @@ class MainWindow(QMainWindow):
         # Nav buttons
         self._nav_buttons = {}
         self._add_nav_button(sidebar_layout, "customers", "👥  לקוחות", "customers.view")
+        self._add_nav_button(sidebar_layout, "users", "👤  משתמשים", "users.manage")
         self._add_nav_button(sidebar_layout, "settings", "⚙️  הגדרות", "settings.view")
         sidebar_layout.addStretch()
 
@@ -96,6 +98,8 @@ class MainWindow(QMainWindow):
 
         if key == "customers":
             self._show_customer_list()
+        elif key == "users":
+            self._show_user_management()
         elif key == "settings":
             self._show_settings()
 
@@ -132,6 +136,13 @@ class MainWindow(QMainWindow):
         screen.cancelled.connect(lambda: self._show_customer_detail(customer_id))
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
+
+    def _show_user_management(self):
+        self._clear_stack()
+        screen = UserManagementScreen()
+        self.stack.addWidget(screen)
+        self.stack.setCurrentWidget(screen)
+        self._set_nav_active("users")
 
     def _show_settings(self):
         self._clear_stack()

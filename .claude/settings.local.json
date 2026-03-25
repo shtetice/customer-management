@@ -45,7 +45,9 @@
       "Bash(python3 -m py_compile main.py)",
       "Bash(python3 -:*)",
       "Bash(sed -i '' '/btn_details\\\\.setStyleSheet\\(\"\"\"\"\\)/d' ui/screens/customer_list_screen.py)",
-      "Bash(sed -i '' '/title\\\\.setStyleSheet\\(\"\"\"\"\\)/d' ui/screens/customer_list_screen.py)"
+      "Bash(sed -i '' '/title\\\\.setStyleSheet\\(\"\"\"\"\\)/d' ui/screens/customer_list_screen.py)",
+      "Bash(python -c \"from ui.screens.user_management_screen import UserManagementScreen; print\\(''OK''\\)\")",
+      "Bash(python3 -c \"from ui.screens.user_management_screen import UserManagementScreen; print\\(''OK''\\)\")"
     ]
   }
 }

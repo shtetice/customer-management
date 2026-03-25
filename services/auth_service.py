@@ -82,6 +82,66 @@ class AuthService:
         finally:
             session.close()
 
+    def get_all_users(self) -> list[User]:
+        session = get_session()
+        try:
+            users = session.query(User).order_by(User.username).all()
+            for u in users:
+                session.expunge(u)
+            return users
+        finally:
+            session.close()
+
+    def get_user_by_id(self, user_id: int) -> User | None:
+        session = get_session()
+        try:
+            user = session.query(User).filter_by(id=user_id).first()
+            if user:
+                session.expunge(user)
+            return user
+        finally:
+            session.close()
+
+    def update_user(self, user_id: int, full_name: str, role: UserRole, is_active: bool):
+        session = get_session()
+        try:
+            user = session.query(User).filter_by(id=user_id).first()
+            if not user:
+                raise ValueError("משתמש לא נמצא")
+            user.full_name = full_name
+            user.role = role
+            user.is_active = is_active
+            session.commit()
+        finally:
+            session.close()
+
+    def reset_password(self, user_id: int, new_password: str):
+        if not new_password or len(new_password) < 4:
+            raise ValueError("הסיסמה חייבת להכיל לפחות 4 תווים")
+        session = get_session()
+        try:
+            user = session.query(User).filter_by(id=user_id).first()
+            if not user:
+                raise ValueError("משתמש לא נמצא")
+            user.password_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+            session.commit()
+        finally:
+            session.close()
+
+    def get_user_permissions(self, user_id: int) -> dict[str, bool]:
+        """Returns {feature_key: allowed} for the given user."""
+        session = get_session()
+        try:
+            perms = (
+                session.query(UserPermission, Feature)
+                .join(Feature, UserPermission.feature_id == Feature.id)
+                .filter(UserPermission.user_id == user_id)
+                .all()
+            )
+            return {f.key: p.allowed for p, f in perms}
+        finally:
+            session.close()
+
     def set_permission(self, user_id: int, feature_key: str, allowed: bool):
         session = get_session()
         try:
