@@ -271,23 +271,35 @@ class CustomerDetailScreen(QWidget):
 
     @staticmethod
     def _add_grid_row(rows: QVBoxLayout, label: str, value: str):
-        # Single HTML QLabel per row — Qt's HTML renderer handles alignment
-        # independently of the parent RTL/LTR layout direction.
-        display_value = value if value else "—"
-        value_color = "#1a2533" if value else "#bdc3c7"
-        value_style = f"color:{value_color}; font-size:13px;" + ("font-style:italic;" if not value else "")
+        # LTR row: [value — stretches] [label — natural size, no fixed width]
+        # LTR overrides the parent RTL so column order is predictable.
+        row_widget = QWidget()
+        row_widget.setStyleSheet("background: transparent; border: none;")
+        row_widget.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        row_hbox = QHBoxLayout(row_widget)
+        row_hbox.setContentsMargins(0, 0, 0, 0)
+        row_hbox.setSpacing(12)
 
-        html = (
-            f'<div style="text-align:right; direction:rtl;">'
-            f'<div style="color:#a0aab4; font-size:9pt; font-weight:bold;">{label.upper()}</div>'
-            f'<div style="{value_style}">{display_value}</div>'
-            f'</div>'
-        )
-        lbl = QLabel(html)
-        lbl.setTextFormat(Qt.TextFormat.RichText)
-        lbl.setWordWrap(True)
-        lbl.setStyleSheet("background: transparent; border: none;")
-        rows.addWidget(lbl)
+        val = QLabel(value if value else "—")
+        val.setWordWrap(True)
+        val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        if value:
+            val.setStyleSheet("font-size: 13px; color: #1a2533; background: transparent; border: none;")
+        else:
+            val.setStyleSheet("font-size: 13px; color: #bdc3c7; font-style: italic; background: transparent; border: none;")
+
+        lbl = QLabel(label)
+        lbl.setFont(QFont("Arial", 9, QFont.Weight.Bold))
+        lbl.setStyleSheet("color: #a0aab4; background: transparent; border: none;")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        # Let the label size itself — no setFixedWidth, no clipping
+        lbl.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
+        lbl.adjustSize()
+
+        row_hbox.addWidget(val, 1)   # value fills left space
+        row_hbox.addWidget(lbl, 0)   # label takes its natural width on right
+
+        rows.addWidget(row_widget)
 
     def _refresh_info(self):
         while self._info_layout.count():
