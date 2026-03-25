@@ -130,7 +130,7 @@ class SettingsScreen(QWidget):
                 background: #fafafa; color: #2c3e50;
             }
         """)
-        saved_backup_pwd = settings_service.get("backup_password", "")
+        saved_backup_pwd = settings_service.get_secret("backup_password")
         if saved_backup_pwd:
             self._backup_password_input.setText(saved_backup_pwd)
         pwd_row.addWidget(self._backup_password_input, stretch=1)
@@ -263,11 +263,11 @@ class SettingsScreen(QWidget):
         if not pwd:
             QMessageBox.warning(self, "שגיאה", "יש להקליד סיסמה")
             return
-        settings_service.set("backup_password", pwd)
+        settings_service.set_secret("backup_password", pwd)
         self._backup_status_label.setText("הסיסמה נשמרה")
 
     def _reveal_backup_password(self):
-        backup_pwd = settings_service.get("backup_password", "")
+        backup_pwd = settings_service.get_secret("backup_password")
         if not backup_pwd:
             QMessageBox.information(self, "סיסמת גיבוי", "לא הוגדרה סיסמת גיבוי עדיין.")
             return

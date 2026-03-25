@@ -32,5 +32,26 @@ class SettingsService:
         self._data[key] = value
         self._save()
 
+    # ── Encrypted secret helpers ──────────────────────────────
+
+    def set_secret(self, key: str, plaintext: str):
+        """Encrypt *plaintext* and store it under *key* in settings.json."""
+        from services.crypto_service import encrypt
+        ciphertext, salt = encrypt(plaintext)
+        self._data[key] = {"enc": ciphertext, "salt": salt}
+        self._save()
+
+    def get_secret(self, key: str, default: str = "") -> str:
+        """Decrypt and return the secret stored under *key*, or *default* if absent."""
+        from services.crypto_service import decrypt
+        entry = self._data.get(key)
+        if not entry or not isinstance(entry, dict):
+            # Fall back gracefully for plain-text values written by older versions
+            return entry if isinstance(entry, str) else default
+        try:
+            return decrypt(entry["enc"], entry["salt"])
+        except Exception:
+            return default
+
 
 settings_service = SettingsService()

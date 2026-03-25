@@ -185,7 +185,7 @@ class MainWindow(QMainWindow):
 
     def _run_autobackup(self):
         backup_folder = settings_service.get("backup_folder", "")
-        backup_password = settings_service.get("backup_password", "")
+        backup_password = settings_service.get_secret("backup_password")
         if not backup_folder or not backup_password:
             return
 
