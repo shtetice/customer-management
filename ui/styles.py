@@ -3,6 +3,7 @@
 APP_STYLE = """
 QMainWindow, QWidget {
     background-color: #f5f5f5;
+    color: #2c3e50;
     font-family: Arial;
     font-size: 14px;
 }
