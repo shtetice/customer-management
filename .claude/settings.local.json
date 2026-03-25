@@ -22,7 +22,27 @@
       "Bash(cd * && git *)",
       "Bash(python -c \"from ui.screens.customer_detail_screen import CustomerDetailScreen; print\\(''OK''\\)\")",
       "Bash(python3 -c \"from ui.screens.customer_detail_screen import CustomerDetailScreen; print\\(''OK''\\)\")",
-      "Bash(python3 -m py_compile ui/screens/customer_detail_screen.py)"
+      "Bash(python3 -m py_compile ui/screens/customer_detail_screen.py)",
+      "Bash(python3 -m py_compile database/models.py database/db.py controllers/contact_controller.py ui/screens/add_contact_screen.py ui/screens/customer_detail_screen.py)",
+      "Bash(python3 -m py_compile ui/screens/customer_list_screen.py ui/screens/customer_detail_screen.py)",
+      "Bash(python3 -m py_compile ui/screens/add_receipt_screen.py)",
+      "Bash(python3 -m py_compile database/models.py database/db.py controllers/receipt_controller.py ui/screens/add_receipt_screen.py ui/screens/customer_detail_screen.py)",
+      "Bash(python -c \"from database.models import Customer; print\\(''models ok''\\)\")",
+      "Bash(python -c \"from controllers.customer_controller import customer_controller; print\\(''controller ok''\\)\")",
+      "Bash(python -c \"from ui.screens.add_customer_screen import AddCustomerScreen; print\\(''add_customer ok''\\)\")",
+      "Bash(python -c \"from ui.screens.customer_list_screen import CustomerListScreen; print\\(''list_screen ok''\\)\")",
+      "Bash(python3 -c \"from database.models import Customer; print\\(''models ok''\\)\")",
+      "Bash(python3 -c \"from controllers.customer_controller import customer_controller; print\\(''controller ok''\\)\")",
+      "Bash(venv/bin/python3 -c \":*)",
+      "Bash(venv/bin/python3 -m pytest tests/ -q)",
+      "Bash(venv/bin/python3 -c \"from ui.screens.customer_detail_screen import CustomerDetailScreen; print\\(''ok''\\)\")",
+      "Bash(find \"/Users/tzahmalka/Documents/Claude projects/Customer management\" -name \"*.pyc\" -delete)",
+      "Bash(find \"/Users/tzahmalka/Documents/Claude projects/Customer management\" -name \"__pycache__\" -type d -empty -delete)",
+      "Bash(find . -name \"*.pyc\" -delete)",
+      "Bash(python3 -m py_compile ui/screens/customer_list_screen.py)",
+      "Bash(python3 -m py_compile ui/screens/customer_list_screen.py controllers/customer_controller.py)",
+      "Bash(python3 -m py_compile main.py ui/main_window.py)",
+      "Bash(python3 -m py_compile main.py)"
     ]
   }
 }
