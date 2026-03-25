@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QTextEdit, QDialog, QLineEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QBrush, QColor, QCursor
+from PyQt6.QtGui import QFont, QFontMetrics, QBrush, QColor, QCursor
 
 from controllers.customer_controller import customer_controller
 from controllers.treatment_controller import treatment_controller
@@ -263,6 +263,7 @@ class CustomerDetailScreen(QWidget):
 
         grid = QGridLayout()
         grid.setColumnStretch(1, 1)
+        grid.setColumnMinimumWidth(0, 100)  # ensure label column always has room
         grid.setHorizontalSpacing(16)
         grid.setVerticalSpacing(12)
         inner.addLayout(grid)
@@ -271,14 +272,15 @@ class CustomerDetailScreen(QWidget):
     @staticmethod
     def _add_grid_row(grid: QGridLayout, label: str, value: str):
         row = grid.rowCount()
+        label_font = QFont("Arial", 10, QFont.Weight.Bold)
         lbl = QLabel(label.upper())
         lbl.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        # Use setFont so that sizeHint() reflects the actual rendered size
-        lbl.setFont(QFont("Arial", 10, QFont.Weight.Bold))
-        lbl.setStyleSheet("color: #95a5a6; letter-spacing: 0.5px; background: transparent; border: none;")
+        lbl.setFont(label_font)
+        lbl.setStyleSheet("color: #95a5a6; background: transparent; border: none;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
-        # Minimum: can grow, but never narrower than the text needs
-        lbl.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
+        # Enforce minimum width from actual font metrics so the text never clips
+        lbl.setMinimumWidth(QFontMetrics(label_font).horizontalAdvance(label.upper()) + 12)
+        lbl.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
         val = QLabel(value if value else "—")
         val.setWordWrap(True)
