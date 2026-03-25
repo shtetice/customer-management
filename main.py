@@ -16,8 +16,6 @@ def main():
     app.setStyle(QStyleFactory.create("Fusion"))
     app.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
     app.setStyleSheet(APP_STYLE)
-    app.setQuitOnLastWindowClosed(False)  # we control quitting manually
-
     init_db()
     auth_service.ensure_default_manager()
 
@@ -34,8 +32,14 @@ def main():
         nonlocal main_window
         login.close()
         main_window = MainWindow()
-        main_window.logout_requested.connect(show_login)
+        main_window.logout_requested.connect(on_logout)
         main_window.show()
+
+    def on_logout():
+        # Show login before closing main window so the app doesn't quit
+        show_login()
+        if main_window:
+            main_window.close()
 
     # Try to restore a remembered session
     saved = session_service.load()
@@ -47,7 +51,7 @@ def main():
                 db.expunge(user)
                 auth_service._current_user = user
                 main_window = MainWindow()
-                main_window.logout_requested.connect(show_login)
+                main_window.logout_requested.connect(on_logout)
                 main_window.show()
                 sys.exit(app.exec())
         finally:
