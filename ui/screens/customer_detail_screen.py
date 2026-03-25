@@ -271,30 +271,23 @@ class CustomerDetailScreen(QWidget):
 
     @staticmethod
     def _add_grid_row(rows: QVBoxLayout, label: str, value: str):
-        # Stacked layout: label line on top, value line below — no column widths to fight.
-        row_widget = QWidget()
-        row_widget.setStyleSheet("background: transparent; border: none;")
-        row_vbox = QVBoxLayout(row_widget)
-        row_vbox.setContentsMargins(0, 0, 0, 0)
-        row_vbox.setSpacing(1)
+        # Single HTML QLabel per row — Qt's HTML renderer handles alignment
+        # independently of the parent RTL/LTR layout direction.
+        display_value = value if value else "—"
+        value_color = "#1a2533" if value else "#bdc3c7"
+        value_style = f"color:{value_color}; font-size:13px;" + ("font-style:italic;" if not value else "")
 
-        lbl = QLabel(label.upper())
-        lbl.setFont(QFont("Arial", 9, QFont.Weight.Bold))
-        lbl.setStyleSheet("color: #a0aab4; background: transparent; border: none;")
-        lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
-
-        val = QLabel(value if value else "—")
-        val.setWordWrap(True)
-        val.setAlignment(Qt.AlignmentFlag.AlignRight)
-        if value:
-            val.setStyleSheet("font-size: 13px; color: #1a2533; background: transparent; border: none;")
-        else:
-            val.setStyleSheet("font-size: 13px; color: #bdc3c7; font-style: italic; background: transparent; border: none;")
-
-        row_vbox.addWidget(lbl)
-        row_vbox.addWidget(val)
-
-        rows.addWidget(row_widget)
+        html = (
+            f'<div style="text-align:right; direction:rtl;">'
+            f'<div style="color:#a0aab4; font-size:9pt; font-weight:bold;">{label.upper()}</div>'
+            f'<div style="{value_style}">{display_value}</div>'
+            f'</div>'
+        )
+        lbl = QLabel(html)
+        lbl.setTextFormat(Qt.TextFormat.RichText)
+        lbl.setWordWrap(True)
+        lbl.setStyleSheet("background: transparent; border: none;")
+        rows.addWidget(lbl)
 
     def _refresh_info(self):
         while self._info_layout.count():
