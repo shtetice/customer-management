@@ -94,38 +94,32 @@ If the user says anything like "we're done for today", "let's stop here", "that'
 **Last session:** 2026-03-26
 
 **Completed today:**
-- **Activity logging** — `services/activity_service.py` with `log_action`, `get_logs`, `delete_all_logs`, `has_activity_since`, `purge_old_logs`; `ActivityLog` model in `database/models.py`; migration in `database/db.py`
-- **Activity log screen** — `ui/screens/activity_log_screen.py`; admin-only nav button in sidebar; refresh + delete-all with confirmation
-- **Auto-backup on close** — `services/backup_service.py` (openpyxl + msoffcrypto password-protected Excel); `_run_autobackup()` in `ui/main_window.py`; skips backup if no activity since last run; saves `last_backup_time` to settings
-- **Reveal backup password** — Settings screen: admin must re-enter login password via `_ConfirmPasswordDialog` before password is shown
-- **Log retention setting** — configurable via Settings screen (`log_retention_days`); `purge_old_logs()` called on startup
-- **Remember Me fix** — root cause: logout called `session_service.clear()` then `close()` which triggered `closeEvent → app.quit()`, killing the new login screen. Fix: `_logging_out` flag in `MainWindow` suppresses `app.quit()` during logout. Also added `app.setQuitOnLastWindowClosed(False)` in `main.py`
-- **Customer profile photo** — `profile_photo_path` column on Customer; `CustomerController.set_profile_photo()`; clickable avatar circle in `CustomerDetailScreen`; left-click enlarges photo (`_PhotoViewerDialog`, 600×600 max); right-click shows context menu (הגדל/שנה/הסר); circular crop via `QPainter`+`QPainterPath`; photo stored in `uploads/photos/<id>/profile.<ext>`
+- **Code review fixes** — `settings.json` added to `.gitignore`; `profile_photo_path` cached in `CustomerDetailScreen` (no per-click DB query); photo save path resolved against `_APP_ROOT`; `import shutil` moved to top; `_PhotoViewerDialog.mousePressEvent` only fires on background
+- **Backup password encryption** — `services/crypto_service.py` using Fernet (AES-128-CBC + HMAC-SHA256, PBKDF2 key derivation, random salt per value); `set_secret()`/`get_secret()` added to `SettingsService`; backwards-compatible with plain-text values; 10 tests in `tests/test_crypto_service.py`
+- **Tests** — `tests/test_activity_service.py` (10 tests), `tests/test_backup_service.py` (8 tests), `tests/test_crypto_service.py` (10 tests) — all green; total suite 72 passing
+- **Logout quit fix** — removed `_logging_out` flag and `show_login()` call from logout flow; `closeEvent` now always calls `app.quit()`; clicking logout cleanly exits the Python process; `LoginScreen.closeEvent` also quits when login window is closed with X
 
 **Key files:**
-- `services/activity_service.py` — audit log (all CRUD)
-- `services/backup_service.py` — Excel backup with password encryption
-- `ui/screens/activity_log_screen.py` — admin log viewer
-- `ui/screens/settings_screen.py` — backup folder/password/reveal, log retention setting
-- `ui/main_window.py` — `_run_autobackup()` (line ~186), `_logging_out` flag (line ~24), `_logout()` (line ~214)
-- `ui/screens/customer_detail_screen.py` — `_avatar_mouse_press` (line ~221), `_make_circular_photo` (line ~267), `_PhotoViewerDialog` (line ~1080)
-- `database/models.py` — `ActivityLog` model (line ~158), `profile_photo_path` on Customer (line ~50)
+- `services/crypto_service.py` — Fernet encrypt/decrypt (new)
+- `services/settings_service.py` — `set_secret()`/`get_secret()` (line ~37)
+- `ui/main_window.py` — `closeEvent` always quits (line ~179), `_logout()` simplified (line ~210)
+- `ui/screens/login_screen.py` — `closeEvent` calls `app.quit()` unless `_logging_in` (line ~108)
+- `ui/screens/customer_detail_screen.py` — `_APP_ROOT` constant (line ~6), `_profile_photo_path` cache (line ~178)
+- `tests/test_activity_service.py`, `tests/test_backup_service.py`, `tests/test_crypto_service.py` — new test files
 
-**Next steps:**
-1. Add tests for `activity_service`, `backup_service`, `session_service`, and profile photo flow — currently no coverage
-2. Add `settings.json` to `.gitignore` explicitly (it contains local folder paths and the backup password)
-3. Consider encrypting the backup password at rest in `settings.json` — currently stored in plain text
-4. Compile to Windows `.exe` via PyInstaller (add `msoffcrypto`, `openpyxl` to spec)
-5. Receipt file format: currently plain `.txt` — consider PDF in the future
-6. Verify `updated_at` fires correctly on partial updates in SQLite
+**Next steps (priority order for next session):**
+1. **Shared calendar** — new feature requested; design TBD (appointments/availability per staff member? per customer?)
+2. Compile to Windows `.exe` via PyInstaller — add `msoffcrypto`, `openpyxl`, `cryptography` to spec
+3. Receipt format — currently plain `.txt`; consider PDF
+4. Verify `updated_at` fires correctly on partial updates in SQLite
+5. Fix pre-existing `test_db_migration` failures (2 tests — `_migrate()` called before tables exist in test)
 
 **Open questions / blockers:**
-- Backup password is stored in plain text in `settings.json` — acceptable for now but worth addressing before wider deployment
-- `uploads/photos/` directory is not in `.gitignore` — profile photos could be committed accidentally
+- Shared calendar scope: per-staff appointments? customer booking? which view (day/week/month)?
 
 **Important context:**
-- `_DatePickerButton` is defined in `add_customer_screen.py` and imported by both `add_treatment_screen.py` and `add_receipt_screen.py` — shared widget living in a screen file
-- `QMenu` dropdown style is duplicated across `customer_list_screen.py` and `customer_detail_screen.py`
-- Global `QTableWidget::item` stylesheet must NOT set `color` or `background-color` — doing so overrides all item data roles silently
-- `app.setQuitOnLastWindowClosed(False)` is essential — without it, closing the login window kills the app before the main window appears
-- `_logging_out` flag pattern must be preserved in `MainWindow` — removing it will break "Remember Me" on logout
+- `app.setQuitOnLastWindowClosed(False)` must stay — without it, closing the login window before the main window appears kills the app prematurely
+- `LoginScreen._logging_in = True` must be set before `login_successful.emit()` — otherwise `login.close()` in `on_login()` triggers `closeEvent → app.quit()` mid-login
+- `closeEvent` on `MainWindow` always calls `app.quit()` — do NOT add conditional logic back; session is cleared in `_logout()` before close
+- `_DatePickerButton` lives in `add_customer_screen.py` and is imported by `add_treatment_screen.py` and `add_receipt_screen.py`
+- Global `QTableWidget::item` stylesheet must NOT set `color` or `background-color` — silently overrides item data roles
