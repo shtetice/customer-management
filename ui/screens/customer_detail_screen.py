@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QTextEdit, QDialog, QLineEdit, QFileDialog, QRubberBand
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
-from PyQt6.QtGui import QFont, QFontMetrics, QBrush, QColor, QCursor, QPixmap
+from PyQt6.QtGui import QFont, QFontMetrics, QBrush, QColor, QCursor, QPixmap, QPainter, QPainterPath
 
 from controllers.customer_controller import customer_controller
 from controllers.treatment_controller import treatment_controller
@@ -61,11 +61,14 @@ class CustomerDetailScreen(QWidget):
         card_layout.setContentsMargins(20, 18, 20, 18)
         card_layout.setSpacing(20)
 
-        # Avatar circle
+        # Avatar circle (clickable)
         self._avatar_label = QLabel()
         self._avatar_label.setFixedSize(56, 56)
         self._avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._avatar_label.setFont(QFont("Arial", 20, QFont.Weight.Bold))
+        self._avatar_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._avatar_label.setToolTip("לחץ לשינוי תמונת פרופיל | לחץ קליק ימני להסרה")
+        self._avatar_label.mousePressEvent = self._avatar_mouse_press
         card_layout.addWidget(self._avatar_label)
 
         # Name + status column
@@ -165,19 +168,27 @@ class CustomerDetailScreen(QWidget):
         self._name_label.setText(full_name)
         self._customer_name = full_name
 
-        # Avatar: initials in a colored circle
-        initials = (c.name[:1] + c.surname[:1]).upper() if c.surname else c.name[:2].upper()
-        color_idx = ord(c.name[0].upper()) % len(self._AVATAR_COLORS) if c.name else 0
-        avatar_color = self._AVATAR_COLORS[color_idx]
-        self._avatar_label.setText(initials)
-        self._avatar_label.setStyleSheet(f"""
-            QLabel {{
-                background: {avatar_color};
-                color: white;
-                border-radius: 28px;
-                border: none;
-            }}
-        """)
+        # Avatar: photo if available, otherwise initials in a colored circle
+        photo_path = c.profile_photo_path
+        if photo_path and os.path.isfile(photo_path):
+            pixmap = self._make_circular_photo(photo_path, 56)
+            self._avatar_label.setPixmap(pixmap)
+            self._avatar_label.setText("")
+            self._avatar_label.setStyleSheet("border-radius: 28px; border: none; background: transparent;")
+        else:
+            initials = (c.name[:1] + c.surname[:1]).upper() if c.surname else c.name[:2].upper()
+            color_idx = ord(c.name[0].upper()) % len(self._AVATAR_COLORS) if c.name else 0
+            avatar_color = self._AVATAR_COLORS[color_idx]
+            self._avatar_label.setPixmap(QPixmap())
+            self._avatar_label.setText(initials)
+            self._avatar_label.setStyleSheet(f"""
+                QLabel {{
+                    background: {avatar_color};
+                    color: white;
+                    border-radius: 28px;
+                    border: none;
+                }}
+            """)
 
         # Status badge
         status_text = STATUS_LABELS.get(c.status.value, c.status.value)
@@ -206,6 +217,59 @@ class CustomerDetailScreen(QWidget):
                 self.back_requested.emit()
             except Exception as e:
                 QMessageBox.critical(self, "שגיאה", str(e))
+
+    def _avatar_mouse_press(self, event):
+        if event.button() == Qt.MouseButton.RightButton:
+            menu = QMenu(self)
+            menu.addAction("שנה תמונה", self._pick_profile_photo)
+            menu.addAction("הסר תמונה", self._remove_profile_photo)
+            menu.exec(QCursor.pos())
+        else:
+            self._pick_profile_photo()
+
+    def _pick_profile_photo(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "בחר תמונת פרופיל", "",
+            "תמונות (*.png *.jpg *.jpeg *.bmp *.gif *.webp)"
+        )
+        if not path:
+            return
+        # Copy to uploads/photos/<customer_id>/
+        import shutil
+        ext = os.path.splitext(path)[1].lower()
+        dest_dir = os.path.join("uploads", "photos", str(self._customer_id))
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, f"profile{ext}")
+        shutil.copy2(path, dest)
+        customer_controller.set_profile_photo(self._customer_id, dest)
+        self._refresh_summary()
+
+    def _remove_profile_photo(self):
+        customer_controller.set_profile_photo(self._customer_id, None)
+        self._refresh_summary()
+
+    @staticmethod
+    def _make_circular_photo(path: str, size: int) -> QPixmap:
+        src = QPixmap(path)
+        if src.isNull():
+            return QPixmap()
+        src = src.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                          Qt.TransformationMode.SmoothTransformation)
+        # Crop to square from center
+        x = (src.width() - size) // 2
+        y = (src.height() - size) // 2
+        src = src.copy(x, y, size, size)
+
+        result = QPixmap(size, size)
+        result.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(result)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        path_clip = QPainterPath()
+        path_clip.addEllipse(0, 0, size, size)
+        painter.setClipPath(path_clip)
+        painter.drawPixmap(0, 0, src)
+        painter.end()
+        return result
 
     # ── Info tab ──────────────────────────────────────────────
 
@@ -684,7 +748,6 @@ class CustomerDetailScreen(QWidget):
 
     def _build_photos_tab(self) -> QWidget:
         widget = QWidget()
-        widget.setStyleSheet("background: transparent;")
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(20, 16, 20, 20)
         layout.setSpacing(12)
@@ -701,25 +764,30 @@ class CustomerDetailScreen(QWidget):
         header.addWidget(btn_upload)
         layout.addLayout(header)
 
+        # Empty state label (shown when no photos)
+        self._photos_empty_lbl = QLabel("אין תמונות עדיין.\nלחץ על '+ הוסף תמונה' כדי להעלות.")
+        self._photos_empty_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._photos_empty_lbl.setStyleSheet("font-size: 13px;")
+        layout.addWidget(self._photos_empty_lbl, 1)
+
         # Scroll area with thumbnail grid
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("QScrollArea { border: none; }")
 
         self._photos_container = QWidget()
-        self._photos_container.setStyleSheet("background: transparent;")
         self._photos_grid = QGridLayout(self._photos_container)
         self._photos_grid.setSpacing(12)
         self._photos_grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
 
         scroll.setWidget(self._photos_container)
+        self._photos_scroll = scroll
         layout.addWidget(scroll, 1)
 
         self._refresh_photos()
         return widget
 
     def _refresh_photos(self):
-        # Clear existing thumbnails
         while self._photos_grid.count():
             item = self._photos_grid.takeAt(0)
             if item.widget():
@@ -727,11 +795,11 @@ class CustomerDetailScreen(QWidget):
 
         photos = file_controller.get_photos(self._customer_id)
 
-        if not photos:
-            empty = QLabel("אין תמונות עדיין")
-            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty.setStyleSheet("color: #aaa; font-size: 13px;")
-            self._photos_grid.addWidget(empty, 0, 0)
+        has_photos = bool(photos)
+        self._photos_empty_lbl.setVisible(not has_photos)
+        self._photos_scroll.setVisible(has_photos)
+
+        if not has_photos:
             return
 
         cols = 4
