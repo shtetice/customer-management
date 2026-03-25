@@ -241,7 +241,7 @@ class CustomerDetailScreen(QWidget):
             QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
         """)
 
-        def open_menu(tid=treatment_id):
+        def open_menu(checked=False, tid=treatment_id):
             menu = QMenu(self)
             menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
             menu.setStyleSheet("""
@@ -357,7 +357,7 @@ class CustomerDetailScreen(QWidget):
             QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
         """)
 
-        def open_menu(rid=receipt_id):
+        def open_menu(checked=False, rid=receipt_id):
             menu = QMenu(self)
             menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
             menu.setStyleSheet("""

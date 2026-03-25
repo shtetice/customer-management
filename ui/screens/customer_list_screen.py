@@ -213,7 +213,7 @@ class CustomerListScreen(QWidget):
                     # use font color via HTML workaround isn't available — keep it grouped at bottom
                 menu.exec(QCursor.pos())
 
-            btn_menu.clicked.connect(lambda: make_menu())
+            btn_menu.clicked.connect(lambda checked=False, m=make_menu: m())
             actions_layout.addWidget(btn_menu)
 
             self.table.setCellWidget(row_idx, 5, actions_widget)
