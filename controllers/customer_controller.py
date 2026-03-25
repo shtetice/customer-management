@@ -1,4 +1,5 @@
 from datetime import date
+from sqlalchemy import extract
 from sqlalchemy.orm import Session
 from database.db import get_session
 from database.models import Customer, CustomerStatus, Gender
@@ -6,12 +7,24 @@ from database.models import Customer, CustomerStatus, Gender
 
 class CustomerController:
 
-    def get_all(self, status: CustomerStatus | None = None) -> list[Customer]:
+    def get_all(
+        self,
+        status: CustomerStatus | None = None,
+        birth_month: int | None = None,
+        birth_year: int | None = None,
+        city: str | None = None,
+    ) -> list[Customer]:
         session = get_session()
         try:
             q = session.query(Customer)
             if status:
                 q = q.filter(Customer.status == status)
+            if birth_month:
+                q = q.filter(extract("month", Customer.date_of_birth) == birth_month)
+            if birth_year:
+                q = q.filter(extract("year", Customer.date_of_birth) == birth_year)
+            if city:
+                q = q.filter(Customer.city == city)
             customers = q.order_by(Customer.surname, Customer.name).all()
             for c in customers:
                 session.expunge(c)
@@ -29,23 +42,64 @@ class CustomerController:
         finally:
             session.close()
 
-    def search(self, query: str) -> list[Customer]:
+    def search(
+        self,
+        query: str,
+        birth_month: int | None = None,
+        birth_year: int | None = None,
+        city: str | None = None,
+    ) -> list[Customer]:
         if not query or not query.strip():
-            return self.get_all()
+            return self.get_all(birth_month=birth_month, birth_year=birth_year, city=city)
         session = get_session()
         try:
-            q = f"%{query.strip()}%"
-            customers = session.query(Customer).filter(
-                Customer.name.ilike(q) |
-                Customer.surname.ilike(q) |
-                Customer.phone.ilike(q) |
-                Customer.phone2.ilike(q) |
-                Customer.phone3.ilike(q) |
-                Customer.email.ilike(q)
-            ).order_by(Customer.surname, Customer.name).all()
+            qp = f"%{query.strip()}%"
+            q = session.query(Customer).filter(
+                Customer.name.ilike(qp) |
+                Customer.surname.ilike(qp) |
+                Customer.phone.ilike(qp) |
+                Customer.phone2.ilike(qp) |
+                Customer.phone3.ilike(qp) |
+                Customer.email.ilike(qp)
+            )
+            if birth_month:
+                q = q.filter(extract("month", Customer.date_of_birth) == birth_month)
+            if birth_year:
+                q = q.filter(extract("year", Customer.date_of_birth) == birth_year)
+            if city:
+                q = q.filter(Customer.city == city)
+            customers = q.order_by(Customer.surname, Customer.name).all()
             for c in customers:
                 session.expunge(c)
             return customers
+        finally:
+            session.close()
+
+    def get_distinct_cities(self) -> list[str]:
+        session = get_session()
+        try:
+            rows = (
+                session.query(Customer.city)
+                .filter(Customer.city != None, Customer.city != "")
+                .distinct()
+                .order_by(Customer.city)
+                .all()
+            )
+            return [r[0] for r in rows]
+        finally:
+            session.close()
+
+    def get_distinct_birth_years(self) -> list[int]:
+        session = get_session()
+        try:
+            rows = (
+                session.query(extract("year", Customer.date_of_birth).label("yr"))
+                .filter(Customer.date_of_birth != None)
+                .distinct()
+                .order_by("yr")
+                .all()
+            )
+            return sorted([int(r[0]) for r in rows], reverse=True)
         finally:
             session.close()
 
@@ -61,6 +115,7 @@ class CustomerController:
         status: CustomerStatus,
         notes: str,
         address: str = "",
+        city: str = "",
         date_of_birth: date | None = None,
     ) -> Customer:
         self._validate(name, surname, email)
@@ -77,6 +132,7 @@ class CustomerController:
                 status=status,
                 notes=notes.strip() if notes else None,
                 address=address.strip() if address else None,
+                city=city.strip() if city else None,
                 date_of_birth=date_of_birth,
             )
             session.add(customer)
@@ -100,6 +156,7 @@ class CustomerController:
         status: CustomerStatus,
         notes: str,
         address: str = "",
+        city: str = "",
         date_of_birth: date | None = None,
     ) -> Customer:
         self._validate(name, surname, email)
@@ -118,6 +175,7 @@ class CustomerController:
             customer.status = status
             customer.notes = notes.strip() if notes else None
             customer.address = address.strip() if address else None
+            customer.city = city.strip() if city else None
             customer.date_of_birth = date_of_birth
             session.commit()
             session.refresh(customer)

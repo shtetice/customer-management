@@ -43,6 +43,7 @@ class Customer(Base):
     phone3 = Column(String(30), nullable=True)
     email = Column(String(150), nullable=True)
     address = Column(String(300), nullable=True)
+    city = Column(String(100), nullable=True)
     date_of_birth = Column(Date, nullable=True)
     status = Column(Enum(CustomerStatus), nullable=False, default=CustomerStatus.LEAD)
     notes = Column(Text, nullable=True)

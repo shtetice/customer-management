@@ -1,7 +1,11 @@
+import csv
+import os
+from datetime import datetime
+
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QComboBox, QMessageBox, QAbstractItemView
+    QComboBox, QMessageBox, QAbstractItemView, QFileDialog
 )
 from PyQt6.QtGui import QColor, QFont, QBrush
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -19,8 +23,37 @@ class CustomerListScreen(QWidget):
 
     COLUMNS = ["שם", "שם משפחה", "טלפון", "אימייל", "סטטוס", "פעולות"]
 
+    _COMBO_STYLE = """
+        QComboBox {
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 13px;
+            background: white;
+        }
+        QComboBox:focus { border-color: #3498db; }
+        QComboBox::drop-down { border: none; width: 24px; }
+        QComboBox QAbstractItemView {
+            background-color: #ffffff;
+            color: #2c3e50;
+            border: 1px solid #b0b8c1;
+            outline: none;
+            selection-background-color: #3498db;
+            selection-color: #ffffff;
+            font-size: 13px;
+        }
+        QComboBox QAbstractItemView::item { padding: 4px 8px; min-height: 22px; }
+        QComboBox QAbstractItemView::item:hover { background-color: #3498db; color: white; }
+    """
+
+    _HEBREW_MONTHS = [
+        "ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני",
+        "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר"
+    ]
+
     def __init__(self):
         super().__init__()
+        self._current_customers = []
         self._build_ui()
 
     def _build_ui(self):
@@ -37,21 +70,31 @@ class CustomerListScreen(QWidget):
         header_row.addWidget(title)
         header_row.addStretch()
 
+        btn_csv = QPushButton("ייצא CSV")
+        btn_csv.setFixedHeight(34)
+        btn_csv.setStyleSheet("""
+            QPushButton { background:#27ae60; color:white; border:none; border-radius:4px;
+                          font-size:13px; padding: 0 12px; }
+            QPushButton:hover { background:#219a52; }
+        """)
+        btn_csv.clicked.connect(self._export_csv)
+        header_row.addWidget(btn_csv)
+
         if auth_service.has_permission("customers.add"):
             btn_add = QPushButton("+ הוסף לקוח")
+            btn_add.setFixedHeight(34)
             btn_add.clicked.connect(self.request_add_customer.emit)
             header_row.addWidget(btn_add)
 
         layout.addLayout(header_row)
 
-        # Filter bar
-        filter_row = QHBoxLayout()
-        filter_row.setSpacing(12)
+        # Filter row 1: search + status
+        filter_row1 = QHBoxLayout()
+        filter_row1.setSpacing(12)
 
-        # Search field with label
         search_label = QLabel("🔍  חיפוש:")
         search_label.setStyleSheet("color: #555; font-size: 13px;")
-        filter_row.addWidget(search_label)
+        filter_row1.addWidget(search_label)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("שם, טלפון או אימייל...")
@@ -67,52 +110,67 @@ class CustomerListScreen(QWidget):
             QLineEdit:focus { border-color: #3498db; }
         """)
         self.search_input.textChanged.connect(self._refresh)
-        filter_row.addWidget(self.search_input, stretch=3)
+        filter_row1.addWidget(self.search_input, stretch=3)
 
-        # Status filter with label
         status_label = QLabel("סטטוס:")
         status_label.setStyleSheet("color: #555; font-size: 13px;")
-        filter_row.addWidget(status_label)
+        filter_row1.addWidget(status_label)
 
         self.status_filter = QComboBox()
         self.status_filter.setMinimumHeight(34)
-        self.status_filter.setStyleSheet("""
-            QComboBox {
-                border: 1px solid #bdc3c7;
-                border-radius: 4px;
-                padding: 4px 10px;
-                font-size: 13px;
-                background: white;
-                min-width: 140px;
-            }
-            QComboBox:focus { border-color: #3498db; }
-            QComboBox::drop-down { border: none; width: 24px; }
-            QComboBox::down-arrow { width: 12px; height: 12px; }
-            QComboBox QAbstractItemView {
-                background-color: #ffffff;
-                color: #2c3e50;
-                border: 1px solid #b0b8c1;
-                outline: none;
-                selection-background-color: #3498db;
-                selection-color: #ffffff;
-                font-size: 13px;
-            }
-            QComboBox QAbstractItemView::item {
-                padding: 4px 8px;
-                min-height: 22px;
-            }
-            QComboBox QAbstractItemView::item:hover {
-                background-color: #3498db;
-                color: white;
-            }
-        """)
+        self.status_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 140px; }")
         self.status_filter.addItem("כל הסטטוסים", None)
         for s in CustomerStatus:
             self.status_filter.addItem(STATUS_LABELS[s.value], s)
         self.status_filter.currentIndexChanged.connect(self._refresh)
-        filter_row.addWidget(self.status_filter, stretch=1)
+        filter_row1.addWidget(self.status_filter, stretch=1)
 
-        layout.addLayout(filter_row)
+        layout.addLayout(filter_row1)
+
+        # Filter row 2: birth month, birth year, city
+        filter_row2 = QHBoxLayout()
+        filter_row2.setSpacing(12)
+
+        month_label = QLabel("חודש לידה:")
+        month_label.setStyleSheet("color: #555; font-size: 13px;")
+        filter_row2.addWidget(month_label)
+
+        self.month_filter = QComboBox()
+        self.month_filter.setMinimumHeight(34)
+        self.month_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 120px; }")
+        self.month_filter.addItem("כל החודשים", None)
+        for i, name in enumerate(self._HEBREW_MONTHS, start=1):
+            self.month_filter.addItem(name, i)
+        self.month_filter.currentIndexChanged.connect(self._refresh)
+        filter_row2.addWidget(self.month_filter)
+
+        year_label = QLabel("שנת לידה:")
+        year_label.setStyleSheet("color: #555; font-size: 13px;")
+        filter_row2.addWidget(year_label)
+
+        self.year_filter = QComboBox()
+        self.year_filter.setMinimumHeight(34)
+        self.year_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 100px; }")
+        self.year_filter.addItem("כל השנים", None)
+        filter_row2.addWidget(self.year_filter)
+
+        city_label = QLabel("עיר:")
+        city_label.setStyleSheet("color: #555; font-size: 13px;")
+        filter_row2.addWidget(city_label)
+
+        self.city_filter = QComboBox()
+        self.city_filter.setMinimumHeight(34)
+        self.city_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 130px; }")
+        self.city_filter.addItem("כל הערים", None)
+        filter_row2.addWidget(self.city_filter)
+
+        filter_row2.addStretch()
+
+        layout.addLayout(filter_row2)
+
+        # Connect year/city after they're created
+        self.year_filter.currentIndexChanged.connect(self._refresh)
+        self.city_filter.currentIndexChanged.connect(self._refresh)
 
         # Table
         self.table = QTableWidget()
@@ -135,16 +193,58 @@ class CustomerListScreen(QWidget):
 
         self._refresh()
 
+    def _populate_year_city_filters(self):
+        """Reload year and city dropdowns from DB (preserves current selection if still valid)."""
+        cur_year = self.year_filter.currentData()
+        cur_city = self.city_filter.currentData()
+
+        self.year_filter.blockSignals(True)
+        self.city_filter.blockSignals(True)
+
+        self.year_filter.clear()
+        self.year_filter.addItem("כל השנים", None)
+        for y in customer_controller.get_distinct_birth_years():
+            self.year_filter.addItem(str(y), y)
+
+        self.city_filter.clear()
+        self.city_filter.addItem("כל הערים", None)
+        for c in customer_controller.get_distinct_cities():
+            self.city_filter.addItem(c, c)
+
+        # Restore previous selections if still available
+        for i in range(self.year_filter.count()):
+            if self.year_filter.itemData(i) == cur_year:
+                self.year_filter.setCurrentIndex(i)
+                break
+        for i in range(self.city_filter.count()):
+            if self.city_filter.itemData(i) == cur_city:
+                self.city_filter.setCurrentIndex(i)
+                break
+
+        self.year_filter.blockSignals(False)
+        self.city_filter.blockSignals(False)
+
     def _refresh(self):
+        self._populate_year_city_filters()
+
         query = self.search_input.text().strip()
         status = self.status_filter.currentData()
+        birth_month = self.month_filter.currentData()
+        birth_year = self.year_filter.currentData()
+        city = self.city_filter.currentData()
 
         if query:
-            customers = customer_controller.search(query)
+            customers = customer_controller.search(
+                query, birth_month=birth_month, birth_year=birth_year, city=city
+            )
             if status:
                 customers = [c for c in customers if c.status == status]
         else:
-            customers = customer_controller.get_all(status=status)
+            customers = customer_controller.get_all(
+                status=status, birth_month=birth_month, birth_year=birth_year, city=city
+            )
+
+        self._current_customers = customers
 
         self.table.setRowCount(0)
         for row_idx, customer in enumerate(customers):
@@ -197,6 +297,29 @@ class CustomerListScreen(QWidget):
         item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         item.setForeground(QBrush(QColor("#2c3e50")))
         return item
+
+    def _export_csv(self):
+        if not self._current_customers:
+            QMessageBox.information(self, "ייצוא CSV", "אין לקוחות לייצוא לפי הפילטרים הנוכחיים.")
+            return
+
+        default_name = f"customers_{datetime.now().strftime('%Y%m%d')}.csv"
+        path, _ = QFileDialog.getSaveFileName(self, "שמור קובץ CSV", default_name, "CSV Files (*.csv)")
+        if not path:
+            return
+
+        try:
+            with open(path, "w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                writer.writerow(["שם", "שם משפחה", "טלפון", "אימייל", "עיר", "כתובת", "סטטוס", "תאריך לידה"])
+                for c in self._current_customers:
+                    phones = " | ".join(p for p in [c.phone, c.phone2, c.phone3] if p)
+                    dob = c.date_of_birth.strftime("%d/%m/%Y") if c.date_of_birth else ""
+                    status = STATUS_LABELS.get(c.status.value, c.status.value)
+                    writer.writerow([c.name, c.surname, phones, c.email or "", c.city or "", c.address or "", status, dob])
+            QMessageBox.information(self, "ייצוא CSV", f"הקובץ נשמר בהצלחה:\n{path}")
+        except Exception as e:
+            QMessageBox.critical(self, "שגיאה", f"לא ניתן לשמור את הקובץ:\n{str(e)}")
 
     def _confirm_delete(self, customer_id: int):
         customer = customer_controller.get_by_id(customer_id)

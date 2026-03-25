@@ -393,7 +393,7 @@ class AddCustomerScreen(QWidget):
 
         form_layout.addLayout(row3)
 
-        # Row 4: כתובת + תאריך לידה side by side
+        # Row 4: כתובת + עיר side by side
         row4 = QHBoxLayout()
         row4.setSpacing(16)
 
@@ -401,20 +401,37 @@ class AddCustomerScreen(QWidget):
         address_col.setSpacing(4)
         address_col.addWidget(self._label("כתובת"))
         self.address_input = QLineEdit()
-        self.address_input.setPlaceholderText("רחוב, עיר")
+        self.address_input.setPlaceholderText("רחוב, מספר")
         self.address_input.setMinimumHeight(36)
         self.address_input.setStyleSheet(FIELD_STYLE)
         address_col.addWidget(self.address_input)
         row4.addLayout(address_col)
+
+        city_col = QVBoxLayout()
+        city_col.setSpacing(4)
+        city_col.addWidget(self._label("עיר"))
+        self.city_input = QLineEdit()
+        self.city_input.setPlaceholderText("תל אביב")
+        self.city_input.setMinimumHeight(36)
+        self.city_input.setStyleSheet(FIELD_STYLE)
+        city_col.addWidget(self.city_input)
+        row4.addLayout(city_col)
+
+        form_layout.addLayout(row4)
+
+        # Row 5: תאריך לידה (half width)
+        row5 = QHBoxLayout()
+        row5.setSpacing(16)
 
         dob_col = QVBoxLayout()
         dob_col.setSpacing(4)
         dob_col.addWidget(self._label("תאריך לידה"))
         self.dob_input = _DatePickerButton()
         dob_col.addWidget(self.dob_input)
-        row4.addLayout(dob_col)
+        row5.addLayout(dob_col)
+        row5.addStretch()
 
-        form_layout.addLayout(row4)
+        form_layout.addLayout(row5)
 
         # Notes (full width)
         notes_col = QVBoxLayout()
@@ -514,6 +531,7 @@ class AddCustomerScreen(QWidget):
                     self.phone_inputs[-1].setText(extra)
             self.email_input.setText(customer.email or "")
             self.address_input.setText(customer.address or "")
+            self.city_input.setText(customer.city or "")
             if customer.date_of_birth:
                 self.dob_input.set_date(customer.date_of_birth)
             self.notes_input.setPlainText(customer.notes or "")
@@ -542,6 +560,7 @@ class AddCustomerScreen(QWidget):
         status = self.status_combo.currentData()
         notes = self.notes_input.toPlainText().strip()
         address = self.address_input.text().strip()
+        city = self.city_input.text().strip()
         dob = self.dob_input.get_date()
 
         try:
@@ -549,12 +568,12 @@ class AddCustomerScreen(QWidget):
                 customer_controller.update(
                     self._customer_id, name, surname, gender,
                     phone, phone2, phone3, email, status, notes,
-                    address=address, date_of_birth=dob
+                    address=address, city=city, date_of_birth=dob
                 )
             else:
                 customer_controller.create(
                     name, surname, gender, phone, phone2, phone3, email, status, notes,
-                    address=address, date_of_birth=dob
+                    address=address, city=city, date_of_birth=dob
                 )
 
             self.error_label.setText("")

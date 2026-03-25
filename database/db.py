@@ -25,6 +25,7 @@ def _migrate():
             ("phone2",        "VARCHAR(30)"),
             ("phone3",        "VARCHAR(30)"),
             ("address",       "VARCHAR(300)"),
+            ("city",          "VARCHAR(100)"),
             ("date_of_birth", "DATE"),
         ]:
             if col not in existing:

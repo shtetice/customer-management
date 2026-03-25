@@ -313,6 +313,7 @@ class CustomerDetailScreen(QWidget):
             self._add_grid_row(contact_grid, "טלפון", "  |  ".join(phones))
             self._add_grid_row(contact_grid, "אימייל", c.email or "")
             self._add_grid_row(contact_grid, "כתובת", c.address or "")
+            self._add_grid_row(contact_grid, "עיר", c.city or "")
             self._info_layout.addWidget(contact_card)
 
             # Personal card
