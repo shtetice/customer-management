@@ -60,6 +60,7 @@ class LoginScreen(QWidget):
         self.username_input.setPlaceholderText("הכנס שם משתמש")
         self.username_input.setMinimumHeight(38)
         self.username_input.setStyleSheet(input_style)
+        self.username_input.returnPressed.connect(lambda: self.password_input.setFocus())
         layout.addWidget(self.username_input)
 
         layout.addWidget(QLabel("סיסמה"))
@@ -87,6 +88,18 @@ class LoginScreen(QWidget):
 
         btn_login = QPushButton("התחבר")
         btn_login.setFixedHeight(40)
+        btn_login.setStyleSheet("""
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover { background-color: #2980b9; }
+            QPushButton:pressed { background-color: #2471a3; }
+        """)
         btn_login.clicked.connect(self._on_login)
         layout.addWidget(btn_login)
 
