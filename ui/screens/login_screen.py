@@ -13,6 +13,7 @@ class LoginScreen(QWidget):
 
     def __init__(self):
         super().__init__()
+        self._logging_in = False  # set True before closing on successful login
         self._build_ui()
 
     def _build_ui(self):
@@ -105,6 +106,12 @@ class LoginScreen(QWidget):
 
         outer.addWidget(card, alignment=Qt.AlignmentFlag.AlignCenter)
 
+    def closeEvent(self, event):
+        event.accept()
+        if not self._logging_in:
+            from PyQt6.QtWidgets import QApplication
+            QApplication.instance().quit()
+
     def _on_login(self):
         username = self.username_input.text().strip()
         password = self.password_input.text()
@@ -122,6 +129,7 @@ class LoginScreen(QWidget):
             else:
                 session_service.clear()
             self.error_label.setText("")
+            self._logging_in = True  # prevent closeEvent from quitting the app
             self.login_successful.emit()
         else:
             self.error_label.setText("שם משתמש או סיסמה שגויים")
