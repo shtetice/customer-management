@@ -349,7 +349,7 @@ class CustomerDetailScreen(QWidget):
 
             notes_hdr = QLabel("הערות")
             notes_hdr.setStyleSheet(
-                "font-size: 11px; font-weight: bold; color: #7f8c8d; "
+                "font-size: 15px; font-weight: bold; color: #7f8c8d; "
                 "letter-spacing: 1px; background: transparent; border: none;"
             )
             notes_inner.addWidget(notes_hdr)
