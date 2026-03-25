@@ -10,6 +10,7 @@ from PyQt6.QtGui import QFont, QBrush, QColor
 from database.models import UserRole
 from services.auth_service import auth_service
 from database.db import DEFAULT_FEATURES
+from ui.screens.customer_detail_screen import _ConfirmByTypingDialog
 
 
 ROLE_LABELS = {
@@ -60,7 +61,7 @@ class UserManagementScreen(QWidget):
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
         self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
-        self.table.setColumnWidth(4, 130)
+        self.table.setColumnWidth(4, 240)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
@@ -102,7 +103,7 @@ class UserManagementScreen(QWidget):
             btn_edit.clicked.connect(lambda checked=False, uid=user.id: self._edit_user(uid))
             actions_l.addWidget(btn_edit)
 
-            # Can't deactivate yourself
+            # Can't deactivate or delete yourself
             if user.id != current_id:
                 btn_toggle = QPushButton("השבת" if user.is_active else "הפעל")
                 btn_toggle.setFixedHeight(28)
@@ -112,6 +113,12 @@ class UserManagementScreen(QWidget):
                     btn_toggle.setObjectName("btn_secondary")
                 btn_toggle.clicked.connect(lambda checked=False, uid=user.id, active=user.is_active: self._toggle_active(uid, active))
                 actions_l.addWidget(btn_toggle)
+
+                btn_delete = QPushButton("מחק")
+                btn_delete.setFixedHeight(28)
+                btn_delete.setObjectName("btn_danger")
+                btn_delete.clicked.connect(lambda checked=False, uid=user.id, uname=user.username: self._delete_user(uid, uname))
+                actions_l.addWidget(btn_delete)
 
             self.table.setCellWidget(row_idx, 4, actions_w)
             self.table.setRowHeight(row_idx, 46)
@@ -158,6 +165,24 @@ class UserManagementScreen(QWidget):
                     auth_service.reset_password(user_id, data["password"])
                 for key, allowed in data["permissions"].items():
                     auth_service.set_permission(user_id, key, allowed)
+                self._refresh()
+            except ValueError as e:
+                QMessageBox.warning(self, "שגיאה", str(e))
+
+    def _delete_user(self, user_id: int, username: str):
+        dlg = _ConfirmByTypingDialog(
+            title="מחיקת משתמש",
+            message=(
+                f"פעולה זו תמחק לצמיתות את המשתמש <b>{username}</b>.<br><br>"
+                f"כדי לאשר, הקלד את שם המשתמש:"
+            ),
+            expected=username,
+            confirm_label="מחק לצמיתות",
+            parent=self,
+        )
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            try:
+                auth_service.delete_user(user_id)
                 self._refresh()
             except ValueError as e:
                 QMessageBox.warning(self, "שגיאה", str(e))

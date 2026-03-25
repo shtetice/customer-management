@@ -115,6 +115,17 @@ class AuthService:
         finally:
             session.close()
 
+    def delete_user(self, user_id: int):
+        session = get_session()
+        try:
+            user = session.query(User).filter_by(id=user_id).first()
+            if not user:
+                raise ValueError("משתמש לא נמצא")
+            session.delete(user)
+            session.commit()
+        finally:
+            session.close()
+
     def reset_password(self, user_id: int, new_password: str):
         if not new_password or len(new_password) < 4:
             raise ValueError("הסיסמה חייבת להכיל לפחות 4 תווים")
