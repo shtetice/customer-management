@@ -271,31 +271,33 @@ class CustomerDetailScreen(QWidget):
 
     @staticmethod
     def _add_grid_row(rows: QVBoxLayout, label: str, value: str):
-        # LTR row: [value — stretches] [label — natural size, no fixed width]
-        # LTR overrides the parent RTL so column order is predictable.
+        # Each row is an explicit HBox: [value — stretches left] [label — fixed width right]
+        # Using LTR layout so column ordering is predictable regardless of parent direction.
         row_widget = QWidget()
         row_widget.setStyleSheet("background: transparent; border: none;")
         row_widget.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         row_hbox = QHBoxLayout(row_widget)
         row_hbox.setContentsMargins(0, 0, 0, 0)
-        row_hbox.setSpacing(12)
+        row_hbox.setSpacing(16)
 
         val = QLabel(value if value else "—")
         val.setWordWrap(True)
-        val.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignAbsolute | Qt.AlignmentFlag.AlignTop)
         if value:
             val.setStyleSheet("font-size: 13px; color: #1a2533; background: transparent; border: none;")
         else:
             val.setStyleSheet("font-size: 13px; color: #bdc3c7; font-style: italic; background: transparent; border: none;")
 
-        lbl = QLabel(label)
-        lbl.setFont(QFont("Arial", 9, QFont.Weight.Bold))
-        lbl.setStyleSheet("color: #a0aab4; background: transparent; border: none;")
+        label_font = QFont("Arial", 10, QFont.Weight.Bold)
+        lbl = QLabel(label.upper())
+        lbl.setFont(label_font)
+        lbl.setStyleSheet("color: #95a5a6; background: transparent; border: none;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
-        lbl.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
+        lbl.setFixedWidth(100)  # explicit fixed width — never clipped
 
-        row_hbox.addWidget(val, 1)   # value fills left space
-        row_hbox.addWidget(lbl, 0)   # label takes its natural width on right
+        # LTR order: value fills the left, label sits on the right
+        row_hbox.addWidget(val, 1)
+        row_hbox.addWidget(lbl, 0)
 
         rows.addWidget(row_widget)
 
