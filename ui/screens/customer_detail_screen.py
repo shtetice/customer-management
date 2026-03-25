@@ -40,10 +40,8 @@ class CustomerDetailScreen(QWidget):
         # Header row
         header = QHBoxLayout()
         btn_back = QPushButton("→ חזרה לרשימה")
-        btn_back.setStyleSheet("""
-            QPushButton { background:transparent; color:#3498db; border:none; font-size:13px; padding:0; }
-            QPushButton:hover { color:#2980b9; }
-        """)
+        btn_back.setObjectName("btn_link")
+        btn_back.setStyleSheet("")
         btn_back.clicked.connect(self.back_requested.emit)
         header.addWidget(btn_back)
         header.addStretch()
@@ -54,9 +52,8 @@ class CustomerDetailScreen(QWidget):
         self._summary_card.setObjectName("summaryCard")
         self._summary_card.setStyleSheet("""
             QWidget#summaryCard {
-                background: white;
                 border-radius: 10px;
-                border: 1px solid #e0e6ed;
+                border: 1px solid #c8cdd8;
             }
         """)
         card_layout = QHBoxLayout(self._summary_card)
@@ -76,7 +73,7 @@ class CustomerDetailScreen(QWidget):
         name_col.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         self._name_label = QLabel()
         self._name_label.setFont(QFont("Arial", 17, QFont.Weight.Bold))
-        self._name_label.setStyleSheet("color:#1a2533; border:none; background:transparent;")
+        self._name_label.setStyleSheet("border:none; background:transparent;")
         name_col.addWidget(self._name_label)
 
         self._status_label = QLabel()
@@ -95,11 +92,11 @@ class CustomerDetailScreen(QWidget):
         contact_col.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         self._phone_label = QLabel()
-        self._phone_label.setStyleSheet("color:#444; font-size:13px; border:none; background:transparent;")
+        self._phone_label.setStyleSheet("font-size:13px; border:none; background:transparent;")
         contact_col.addWidget(self._phone_label)
 
         self._email_label = QLabel()
-        self._email_label.setStyleSheet("color:#444; font-size:13px; border:none; background:transparent;")
+        self._email_label.setStyleSheet("font-size:13px; border:none; background:transparent;")
         contact_col.addWidget(self._email_label)
 
         card_layout.addLayout(contact_col)
@@ -113,14 +110,6 @@ class CustomerDetailScreen(QWidget):
             self._card_edit_btn = QPushButton("✎  עריכה")
             self._card_edit_btn.setFixedHeight(32)
             self._card_edit_btn.setMinimumWidth(90)
-            self._card_edit_btn.setStyleSheet("""
-                QPushButton {
-                    background: #f0f4f8; color: #2c3e50;
-                    border: 1px solid #d0d7de; border-radius: 6px;
-                    font-size: 12px; padding: 0 12px;
-                }
-                QPushButton:hover { background: #dce8f5; border-color: #3498db; color: #2980b9; }
-            """)
             cid = self._customer_id
             self._card_edit_btn.clicked.connect(lambda: self.edit_requested.emit(cid))
             btn_col.addWidget(self._card_edit_btn)
@@ -129,14 +118,7 @@ class CustomerDetailScreen(QWidget):
             btn_delete = QPushButton("✕  מחק")
             btn_delete.setFixedHeight(32)
             btn_delete.setMinimumWidth(90)
-            btn_delete.setStyleSheet("""
-                QPushButton {
-                    background: #fdf2f2; color: #e74c3c;
-                    border: 1px solid #f5c6c6; border-radius: 6px;
-                    font-size: 12px; padding: 0 12px;
-                }
-                QPushButton:hover { background: #fce8e8; border-color: #e74c3c; }
-            """)
+            btn_delete.setObjectName("btn_danger")
             btn_delete.clicked.connect(self._confirm_delete)
             btn_col.addWidget(btn_delete)
 
@@ -150,14 +132,13 @@ class CustomerDetailScreen(QWidget):
         # Tabs
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet("""
-            QTabWidget::pane { border:1px solid #ddd; border-radius:4px; background:white; }
+            QTabWidget::pane { border:1px solid #c8cdd8; border-radius:4px; }
             QTabBar::tab {
-                background:#ecf0f1; color:#555; padding:8px 20px;
-                border:1px solid #ddd; border-bottom:none; border-radius:4px 4px 0 0;
+                padding:8px 20px;
+                border:1px solid #c8cdd8; border-bottom:none; border-radius:4px 4px 0 0;
                 font-size:13px; margin-left:2px;
             }
-            QTabBar::tab:selected { background:white; color:#2c3e50; font-weight:bold; }
-            QTabBar::tab:hover { background:#d5dbdb; }
+            QTabBar::tab:selected { font-weight:bold; }
         """)
 
         self.tabs.addTab(self._build_info_tab(), "פרטי לקוח")
@@ -242,8 +223,7 @@ class CustomerDetailScreen(QWidget):
         card.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         card.setStyleSheet("""
             QWidget#infoCard {
-                background: white;
-                border: 1px solid #e0e6ed;
+                border: 1px solid #c8cdd8;
                 border-radius: 8px;
             }
         """)
@@ -253,14 +233,14 @@ class CustomerDetailScreen(QWidget):
 
         hdr = QLabel(title)
         hdr.setStyleSheet(
-            "font-size: 15px; font-weight: bold; color: #7f8c8d; "
+            "font-size: 15px; font-weight: bold; "
             "letter-spacing: 1px; background: transparent; border: none;"
         )
         inner.addWidget(hdr)
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("background: #e8ecf0; border: none; max-height: 1px;")
+        sep.setStyleSheet("border: none; max-height: 1px;")
         inner.addWidget(sep)
 
         rows = QVBoxLayout()
@@ -283,15 +263,12 @@ class CustomerDetailScreen(QWidget):
         val = QLabel(value if value else "—")
         val.setWordWrap(True)
         val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignAbsolute | Qt.AlignmentFlag.AlignTop)
-        if value:
-            val.setStyleSheet("font-size: 13px; color: #1a2533; background: transparent; border: none;")
-        else:
-            val.setStyleSheet("font-size: 13px; color: #bdc3c7; font-style: italic; background: transparent; border: none;")
+        val.setStyleSheet("font-size: 13px; background: transparent; border: none;")
 
         label_font = QFont("Arial", 10, QFont.Weight.Bold)
         lbl = QLabel(label.upper())
         lbl.setFont(label_font)
-        lbl.setStyleSheet("color: #95a5a6; background: transparent; border: none;")
+        lbl.setStyleSheet("background: transparent; border: none; opacity: 0.6;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
         lbl.setFixedWidth(100)  # explicit fixed width — never clipped
 
@@ -338,8 +315,7 @@ class CustomerDetailScreen(QWidget):
             notes_card.setObjectName("infoCard")
             notes_card.setStyleSheet("""
                 QWidget#infoCard {
-                    background: white;
-                    border: 1px solid #e0e6ed;
+                    border: 1px solid #c8cdd8;
                     border-radius: 8px;
                 }
             """)
@@ -349,14 +325,14 @@ class CustomerDetailScreen(QWidget):
 
             notes_hdr = QLabel("הערות")
             notes_hdr.setStyleSheet(
-                "font-size: 15px; font-weight: bold; color: #7f8c8d; "
+                "font-size: 15px; font-weight: bold; "
                 "letter-spacing: 1px; background: transparent; border: none;"
             )
             notes_inner.addWidget(notes_hdr)
 
             notes_sep = QFrame()
             notes_sep.setFrameShape(QFrame.Shape.HLine)
-            notes_sep.setStyleSheet("background: #e8ecf0; border: none; max-height: 1px;")
+            notes_sep.setStyleSheet("border: none; max-height: 1px;")
             notes_inner.addWidget(notes_sep)
 
             raw_notes = c.notes or ""
@@ -371,15 +347,11 @@ class CustomerDetailScreen(QWidget):
             notes_edit.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
             notes_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
             notes_edit.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-            color = "#1a2533" if c.notes else "#bdc3c7"
             style = "font-style: italic;" if not c.notes else ""
             notes_edit.setStyleSheet(f"""
                 QTextEdit {{
                     font-size: 13px;
-                    color: {color};
                     {style}
-                    background: #f8f9fa;
-                    border: 1px solid #e0e6ed;
                     border-radius: 6px;
                     padding: 8px;
                 }}
@@ -455,27 +427,10 @@ class CustomerDetailScreen(QWidget):
         btn = QPushButton("פעולות ▾")
         btn.setFixedHeight(28)
         btn.setMinimumWidth(80)
-        btn.setStyleSheet("""
-            QPushButton {
-                background: #f0f4f8; color: #2c3e50;
-                border: 1px solid #bdc3c7; border-radius: 5px;
-                font-size: 12px; padding: 0 8px;
-            }
-            QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
-        """)
 
         def open_menu(checked=False, tid=treatment_id):
             menu = QMenu(self)
             menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-            menu.setStyleSheet("""
-                QMenu {
-                    background: white; border: 1px solid #ddd;
-                    border-radius: 6px; padding: 4px; font-size: 13px;
-                }
-                QMenu::item { padding: 7px 20px; border-radius: 4px; color: #2c3e50; }
-                QMenu::item:selected { background: #f0f4f8; }
-                QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
-            """)
             menu.addAction("+ הוסף קבלה", lambda: self._add_receipt(tid))
             if auth_service.has_permission("treatments.add"):
                 menu.addAction("✎  עריכה", lambda: self._edit_treatment(tid))
@@ -571,27 +526,10 @@ class CustomerDetailScreen(QWidget):
         btn = QPushButton("פעולות ▾")
         btn.setFixedHeight(28)
         btn.setMinimumWidth(80)
-        btn.setStyleSheet("""
-            QPushButton {
-                background: #f0f4f8; color: #2c3e50;
-                border: 1px solid #bdc3c7; border-radius: 5px;
-                font-size: 12px; padding: 0 8px;
-            }
-            QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
-        """)
 
         def open_menu(checked=False, rid=receipt_id, pdf=pdf_path):
             menu = QMenu(self)
             menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-            menu.setStyleSheet("""
-                QMenu {
-                    background: white; border: 1px solid #ddd;
-                    border-radius: 6px; padding: 4px; font-size: 13px;
-                }
-                QMenu::item { padding: 7px 20px; border-radius: 4px; color: #2c3e50; }
-                QMenu::item:selected { background: #f0f4f8; }
-                QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
-            """)
             if pdf and os.path.isfile(pdf):
                 menu.addAction("📄  פתח PDF", lambda: self._open_pdf(pdf))
                 menu.addSeparator()
@@ -685,27 +623,10 @@ class CustomerDetailScreen(QWidget):
         btn = QPushButton("פעולות ▾")
         btn.setFixedHeight(28)
         btn.setMinimumWidth(80)
-        btn.setStyleSheet("""
-            QPushButton {
-                background: #f0f4f8; color: #2c3e50;
-                border: 1px solid #bdc3c7; border-radius: 5px;
-                font-size: 12px; padding: 0 8px;
-            }
-            QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
-        """)
 
         def open_menu(checked=False, lid=log_id):
             menu = QMenu(self)
             menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-            menu.setStyleSheet("""
-                QMenu {
-                    background: white; border: 1px solid #ddd;
-                    border-radius: 6px; padding: 4px; font-size: 13px;
-                }
-                QMenu::item { padding: 7px 20px; border-radius: 4px; color: #2c3e50; }
-                QMenu::item:selected { background: #f0f4f8; }
-                QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
-            """)
             menu.addAction("✎  עריכה", lambda: self._edit_contact(lid))
             menu.addSeparator()
             menu.addAction("✕  מחק", lambda: self._delete_contact(lid))
@@ -781,7 +702,7 @@ class _ConfirmByTypingDialog(QDialog):
 
         msg_label = QLabel(message)
         msg_label.setWordWrap(True)
-        msg_label.setStyleSheet("font-size: 13px; color: #2c3e50;")
+        msg_label.setStyleSheet("font-size: 13px;")
         msg_label.setTextFormat(Qt.TextFormat.RichText)
         layout.addWidget(msg_label)
 
@@ -790,9 +711,8 @@ class _ConfirmByTypingDialog(QDialog):
         self._input.setMinimumHeight(36)
         self._input.setStyleSheet("""
             QLineEdit {
-                border: 1px solid #ccc; border-radius: 5px;
+                border-radius: 5px;
                 padding: 6px 10px; font-size: 13px;
-                background: white; color: #2c3e50;
             }
             QLineEdit:focus { border-color: #e74c3c; }
         """)
@@ -804,9 +724,8 @@ class _ConfirmByTypingDialog(QDialog):
 
         btn_cancel = QPushButton("ביטול")
         btn_cancel.setFixedHeight(34)
-        btn_cancel.setStyleSheet(
-            "background:#ecf0f1; color:#555; border:1px solid #ccc; border-radius:4px; padding: 0 16px;"
-        )
+        btn_cancel.setObjectName("btn_secondary")
+        btn_cancel.setStyleSheet("")
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
 

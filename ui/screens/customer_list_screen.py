@@ -25,26 +25,12 @@ class CustomerListScreen(QWidget):
 
     _COMBO_STYLE = """
         QComboBox {
-            border: 1px solid #bdc3c7;
             border-radius: 4px;
             padding: 4px 10px;
             font-size: 13px;
-            background: white;
-            color: #2c3e50;
         }
-        QComboBox:focus { border-color: #3498db; }
         QComboBox::drop-down { border: none; width: 24px; }
-        QComboBox QAbstractItemView {
-            background-color: #ffffff;
-            color: #2c3e50;
-            border: 1px solid #b0b8c1;
-            outline: none;
-            selection-background-color: #3498db;
-            selection-color: #ffffff;
-            font-size: 13px;
-        }
         QComboBox QAbstractItemView::item { padding: 4px 8px; min-height: 22px; }
-        QComboBox QAbstractItemView::item:hover { background-color: #3498db; color: white; }
     """
 
     _HEBREW_MONTHS = [
@@ -55,7 +41,8 @@ class CustomerListScreen(QWidget):
     def __init__(self):
         super().__init__()
         self._current_customers = []
-        self.setStyleSheet("QWidget { background-color: #dce8f5; }")
+        self.setObjectName("customerListScreen")
+        self.setStyleSheet("#customerListScreen { background-color: #f0f2f5; }")
         self._build_ui()
 
     def _build_ui(self):
@@ -68,7 +55,6 @@ class CustomerListScreen(QWidget):
         header_row = QHBoxLayout()
         title = QLabel("ניהול לקוחות")
         title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
-        title.setStyleSheet("color: #2c3e50;")
         header_row.addWidget(title)
         header_row.addStretch()
 
@@ -95,7 +81,7 @@ class CustomerListScreen(QWidget):
         search_row.setSpacing(12)
 
         search_label = QLabel("🔍  חיפוש:")
-        search_label.setStyleSheet("color: #555; font-size: 13px;")
+        search_label.setStyleSheet("font-size: 13px;")
         search_row.addWidget(search_label)
 
         self.search_input = QLineEdit()
@@ -103,19 +89,16 @@ class CustomerListScreen(QWidget):
         self.search_input.setMinimumHeight(34)
         self.search_input.setStyleSheet("""
             QLineEdit {
-                border: 1px solid #bdc3c7;
                 border-radius: 4px;
                 padding: 4px 10px;
                 font-size: 13px;
-                background: white;
             }
-            QLineEdit:focus { border-color: #3498db; }
         """)
         self.search_input.textChanged.connect(self._refresh)
         search_row.addWidget(self.search_input, stretch=1)
 
         status_label = QLabel("סטטוס:")
-        status_label.setStyleSheet("color: #555; font-size: 13px;")
+        status_label.setStyleSheet("font-size: 13px;")
         search_row.addWidget(status_label)
 
         self.status_filter = QComboBox()
@@ -134,7 +117,7 @@ class CustomerListScreen(QWidget):
         filter_row.setSpacing(8)
 
         month_label = QLabel("חודש לידה:")
-        month_label.setStyleSheet("color: #555; font-size: 13px;")
+        month_label.setStyleSheet("font-size: 13px;")
         filter_row.addWidget(month_label)
 
         self.month_filter = QComboBox()
@@ -147,7 +130,7 @@ class CustomerListScreen(QWidget):
         filter_row.addWidget(self.month_filter, 1)
 
         year_label = QLabel("שנת לידה:")
-        year_label.setStyleSheet("color: #555; font-size: 13px;")
+        year_label.setStyleSheet("font-size: 13px;")
         filter_row.addWidget(year_label)
 
         self.year_filter = QComboBox()
@@ -158,7 +141,7 @@ class CustomerListScreen(QWidget):
         filter_row.addWidget(self.year_filter, 1)
 
         city_label = QLabel("עיר:")
-        city_label.setStyleSheet("color: #555; font-size: 13px;")
+        city_label.setStyleSheet("font-size: 13px;")
         filter_row.addWidget(city_label)
 
         self.city_filter = QComboBox()
@@ -169,7 +152,7 @@ class CustomerListScreen(QWidget):
         filter_row.addWidget(self.city_filter, 1)
 
         gender_label = QLabel("מגדר:")
-        gender_label.setStyleSheet("color: #555; font-size: 13px;")
+        gender_label.setStyleSheet("font-size: 13px;")
         filter_row.addWidget(gender_label)
 
         self.gender_filter = QComboBox()
@@ -291,17 +274,9 @@ class CustomerListScreen(QWidget):
             actions_layout.setContentsMargins(8, 4, 8, 4)
             actions_layout.addStretch()
 
-            btn_details = QPushButton("👁  פרטים")
+            btn_details = QPushButton("פרטים")
             btn_details.setFixedHeight(28)
             btn_details.setMinimumWidth(80)
-            btn_details.setStyleSheet("""
-                QPushButton {
-                    background: #f0f4f8; color: #2c3e50;
-                    border: 1px solid #bdc3c7; border-radius: 5px;
-                    font-size: 12px; padding: 0 8px;
-                }
-                QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
-            """)
             btn_details.clicked.connect(lambda checked=False, cid=customer.id: self.request_view_customer.emit(cid))
             actions_layout.addWidget(btn_details)
 
@@ -311,7 +286,6 @@ class CustomerListScreen(QWidget):
     def _cell(self, text: str) -> QTableWidgetItem:
         item = QTableWidgetItem(text or "")
         item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignAbsolute | Qt.AlignmentFlag.AlignVCenter)
-        item.setForeground(QBrush(QColor("#2c3e50")))
         return item
 
     def _export_csv(self):

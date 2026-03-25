@@ -42,7 +42,10 @@
       "Bash(python3 -m py_compile ui/screens/customer_list_screen.py)",
       "Bash(python3 -m py_compile ui/screens/customer_list_screen.py controllers/customer_controller.py)",
       "Bash(python3 -m py_compile main.py ui/main_window.py)",
-      "Bash(python3 -m py_compile main.py)"
+      "Bash(python3 -m py_compile main.py)",
+      "Bash(python3 -:*)",
+      "Bash(sed -i '' '/btn_details\\\\.setStyleSheet\\(\"\"\"\"\\)/d' ui/screens/customer_list_screen.py)",
+      "Bash(sed -i '' '/title\\\\.setStyleSheet\\(\"\"\"\"\\)/d' ui/screens/customer_list_screen.py)"
     ]
   }
 }
