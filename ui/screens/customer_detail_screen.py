@@ -234,7 +234,7 @@ class CustomerDetailScreen(QWidget):
         return widget
 
     @staticmethod
-    def _make_section_card(title: str) -> tuple[QWidget, QGridLayout]:
+    def _make_section_card(title: str) -> tuple[QWidget, QVBoxLayout]:
         card = QWidget()
         card.setObjectName("infoCard")
         card.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
@@ -261,26 +261,22 @@ class CustomerDetailScreen(QWidget):
         sep.setStyleSheet("background: #e8ecf0; border: none; max-height: 1px;")
         inner.addWidget(sep)
 
-        grid = QGridLayout()
-        grid.setColumnStretch(1, 1)
-        grid.setColumnMinimumWidth(0, 100)  # ensure label column always has room
-        grid.setHorizontalSpacing(16)
-        grid.setVerticalSpacing(12)
-        inner.addLayout(grid)
-        return card, grid
+        rows = QVBoxLayout()
+        rows.setSpacing(12)
+        rows.setContentsMargins(0, 0, 0, 0)
+        inner.addLayout(rows)
+        return card, rows
 
     @staticmethod
-    def _add_grid_row(grid: QGridLayout, label: str, value: str):
-        row = grid.rowCount()
-        label_font = QFont("Arial", 10, QFont.Weight.Bold)
-        lbl = QLabel(label.upper())
-        lbl.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        lbl.setFont(label_font)
-        lbl.setStyleSheet("color: #95a5a6; background: transparent; border: none;")
-        lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
-        # Enforce minimum width from actual font metrics so the text never clips
-        lbl.setMinimumWidth(QFontMetrics(label_font).horizontalAdvance(label.upper()) + 12)
-        lbl.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+    def _add_grid_row(rows: QVBoxLayout, label: str, value: str):
+        # Each row is an explicit HBox: [value — stretches left] [label — fixed width right]
+        # Using LTR layout so column ordering is predictable regardless of parent direction.
+        row_widget = QWidget()
+        row_widget.setStyleSheet("background: transparent; border: none;")
+        row_widget.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        row_hbox = QHBoxLayout(row_widget)
+        row_hbox.setContentsMargins(0, 0, 0, 0)
+        row_hbox.setSpacing(16)
 
         val = QLabel(value if value else "—")
         val.setWordWrap(True)
@@ -290,8 +286,18 @@ class CustomerDetailScreen(QWidget):
         else:
             val.setStyleSheet("font-size: 13px; color: #bdc3c7; font-style: italic; background: transparent; border: none;")
 
-        grid.addWidget(lbl, row, 0)
-        grid.addWidget(val, row, 1)
+        label_font = QFont("Arial", 10, QFont.Weight.Bold)
+        lbl = QLabel(label.upper())
+        lbl.setFont(label_font)
+        lbl.setStyleSheet("color: #95a5a6; background: transparent; border: none;")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        lbl.setFixedWidth(100)  # explicit fixed width — never clipped
+
+        # LTR order: value fills the left, label sits on the right
+        row_hbox.addWidget(val, 1)
+        row_hbox.addWidget(lbl, 0)
+
+        rows.addWidget(row_widget)
 
     def _refresh_info(self):
         while self._info_layout.count():
