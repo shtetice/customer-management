@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
-from database.models import Base, Feature
+from database.models import Base, Feature, ContactLog
 
 DATABASE_URL = "sqlite:///customer_management.db"
 

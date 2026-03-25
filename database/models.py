@@ -52,6 +52,7 @@ class Customer(Base):
     treatments = relationship("Treatment", back_populates="customer", cascade="all, delete-orphan")
     receipts = relationship("Receipt", back_populates="customer", cascade="all, delete-orphan")
     files = relationship("CustomerFile", back_populates="customer", cascade="all, delete-orphan")
+    contact_logs = relationship("ContactLog", back_populates="customer", cascade="all, delete-orphan")
 
 
 class Treatment(Base):
@@ -95,6 +96,19 @@ class CustomerFile(Base):
     uploaded_at = Column(DateTime, default=datetime.utcnow)
 
     customer = relationship("Customer", back_populates="files")
+
+
+class ContactLog(Base):
+    __tablename__ = "contact_logs"
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    date = Column(DateTime, nullable=False, default=datetime.utcnow)
+    subject = Column(String(200), nullable=False)
+    content = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    customer = relationship("Customer", back_populates="contact_logs")
 
 
 # ---------- Auth & Permissions ----------

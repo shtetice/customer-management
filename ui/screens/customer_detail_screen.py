@@ -13,6 +13,8 @@ from controllers.receipt_controller import receipt_controller
 from services.auth_service import auth_service
 from ui.screens.add_treatment_screen import AddTreatmentDialog
 from ui.screens.add_receipt_screen import AddReceiptDialog
+from ui.screens.add_contact_screen import AddContactDialog
+from controllers.contact_controller import contact_controller
 from ui.styles import STATUS_LABELS, STATUS_COLORS
 
 
@@ -134,6 +136,7 @@ class CustomerDetailScreen(QWidget):
         self.tabs.addTab(self._build_info_tab(), "פרטי לקוח")
         self.tabs.addTab(self._build_treatments_tab(), "היסטוריית טיפולים")
         self.tabs.addTab(self._build_receipts_tab(), "קבלות")
+        self.tabs.addTab(self._build_contact_tab(), "יצירת קשר")
         layout.addWidget(self.tabs)
 
     # ── Summary card ──────────────────────────────────────────
@@ -568,6 +571,104 @@ class CustomerDetailScreen(QWidget):
             try:
                 receipt_controller.delete(receipt_id)
                 self._refresh_receipts()
+            except Exception as e:
+                QMessageBox.critical(self, "שגיאה", str(e))
+
+    # ── Contact tab ───────────────────────────────────────────
+
+    def _build_contact_tab(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(10)
+
+        top = QHBoxLayout()
+        top.addStretch()
+        btn_add = QPushButton("+ הוסף יצירת קשר")
+        btn_add.clicked.connect(self._add_contact)
+        top.addWidget(btn_add)
+        layout.addLayout(top)
+
+        self.contact_table = self._make_table(["תאריך", "נושא", "תוכן", "פעולות"])
+        self.contact_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.contact_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.contact_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.contact_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        self.contact_table.setColumnWidth(3, 110)
+        layout.addWidget(self.contact_table)
+        self._refresh_contacts()
+        return widget
+
+    def _refresh_contacts(self):
+        logs = contact_controller.get_by_customer(self._customer_id)
+        self.contact_table.setRowCount(0)
+        for i, log in enumerate(logs):
+            self.contact_table.insertRow(i)
+            self.contact_table.setItem(i, 0, self._cell(log.date.strftime("%d/%m/%Y")))
+            self.contact_table.setItem(i, 1, self._cell(log.subject or ""))
+            self.contact_table.setItem(i, 2, self._cell(log.content or ""))
+            self.contact_table.setCellWidget(i, 3, self._contact_actions(log.id))
+            self.contact_table.setRowHeight(i, 46)
+
+    def _contact_actions(self, log_id: int) -> QWidget:
+        w = QWidget()
+        row = QHBoxLayout(w)
+        row.setContentsMargins(8, 4, 8, 4)
+        row.addStretch()
+
+        btn = QPushButton("פעולות ▾")
+        btn.setFixedHeight(28)
+        btn.setMinimumWidth(80)
+        btn.setStyleSheet("""
+            QPushButton {
+                background: #f0f4f8; color: #2c3e50;
+                border: 1px solid #bdc3c7; border-radius: 5px;
+                font-size: 12px; padding: 0 8px;
+            }
+            QPushButton:hover { background: #d6eaf8; border-color: #3498db; color: #2980b9; }
+        """)
+
+        def open_menu(checked=False, lid=log_id):
+            menu = QMenu(self)
+            menu.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+            menu.setStyleSheet("""
+                QMenu {
+                    background: white; border: 1px solid #ddd;
+                    border-radius: 6px; padding: 4px; font-size: 13px;
+                }
+                QMenu::item { padding: 7px 20px; border-radius: 4px; color: #2c3e50; }
+                QMenu::item:selected { background: #f0f4f8; }
+                QMenu::separator { height: 1px; background: #eee; margin: 3px 8px; }
+            """)
+            menu.addAction("✎  עריכה", lambda: self._edit_contact(lid))
+            menu.addSeparator()
+            menu.addAction("✕  מחק", lambda: self._delete_contact(lid))
+            menu.exec(QCursor.pos())
+
+        btn.clicked.connect(open_menu)
+        row.addWidget(btn)
+        return w
+
+    def _add_contact(self):
+        dlg = AddContactDialog(self._customer_id, parent=self)
+        dlg.saved.connect(self._refresh_contacts)
+        dlg.exec()
+
+    def _edit_contact(self, log_id: int):
+        dlg = AddContactDialog(self._customer_id, log_id=log_id, parent=self)
+        dlg.saved.connect(self._refresh_contacts)
+        dlg.exec()
+
+    def _delete_contact(self, log_id: int):
+        reply = QMessageBox.question(
+            self, "אישור מחיקה", "האם למחוק רשומה זו?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            try:
+                contact_controller.delete(log_id)
+                self._refresh_contacts()
             except Exception as e:
                 QMessageBox.critical(self, "שגיאה", str(e))
 
