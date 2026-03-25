@@ -6,10 +6,10 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
     QTabWidget, QTableWidget, QTableWidgetItem, QHeaderView,
     QAbstractItemView, QMessageBox, QFrame, QMenu, QScrollArea, QSizePolicy,
-    QTextEdit, QDialog, QLineEdit
+    QTextEdit, QDialog, QLineEdit, QFileDialog, QRubberBand
 )
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QFontMetrics, QBrush, QColor, QCursor
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtGui import QFont, QFontMetrics, QBrush, QColor, QCursor, QPixmap
 
 from controllers.customer_controller import customer_controller
 from controllers.treatment_controller import treatment_controller
@@ -19,6 +19,7 @@ from ui.screens.add_treatment_screen import AddTreatmentDialog
 from ui.screens.add_receipt_screen import AddReceiptDialog
 from ui.screens.add_contact_screen import AddContactDialog
 from controllers.contact_controller import contact_controller
+from controllers.file_controller import file_controller
 from ui.styles import STATUS_LABELS, STATUS_COLORS
 
 
@@ -145,6 +146,7 @@ class CustomerDetailScreen(QWidget):
         self.tabs.addTab(self._build_treatments_tab(), "היסטוריית טיפולים")
         self.tabs.addTab(self._build_receipts_tab(), "קבלות")
         self.tabs.addTab(self._build_contact_tab(), "יצירת קשר")
+        self.tabs.addTab(self._build_photos_tab(), "תמונות")
         layout.addWidget(self.tabs, 1)
 
     # ── Summary card ──────────────────────────────────────────
@@ -677,6 +679,184 @@ class CustomerDetailScreen(QWidget):
         item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         item.setForeground(QBrush(QColor("#2c3e50")))
         return item
+
+    # ── Photos tab ────────────────────────────────────────────
+
+    def _build_photos_tab(self) -> QWidget:
+        widget = QWidget()
+        widget.setStyleSheet("background: transparent;")
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(20, 16, 20, 20)
+        layout.setSpacing(12)
+
+        # Header
+        header = QHBoxLayout()
+        lbl = QLabel("תמונות שנשלחו")
+        lbl.setFont(QFont("Arial", 13, QFont.Weight.Bold))
+        header.addWidget(lbl)
+        header.addStretch()
+        btn_upload = QPushButton("+ הוסף תמונה")
+        btn_upload.setFixedHeight(32)
+        btn_upload.clicked.connect(self._upload_photo)
+        header.addWidget(btn_upload)
+        layout.addLayout(header)
+
+        # Scroll area with thumbnail grid
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; }")
+
+        self._photos_container = QWidget()
+        self._photos_container.setStyleSheet("background: transparent;")
+        self._photos_grid = QGridLayout(self._photos_container)
+        self._photos_grid.setSpacing(12)
+        self._photos_grid.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+
+        scroll.setWidget(self._photos_container)
+        layout.addWidget(scroll, 1)
+
+        self._refresh_photos()
+        return widget
+
+    def _refresh_photos(self):
+        # Clear existing thumbnails
+        while self._photos_grid.count():
+            item = self._photos_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        photos = file_controller.get_photos(self._customer_id)
+
+        if not photos:
+            empty = QLabel("אין תמונות עדיין")
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty.setStyleSheet("color: #aaa; font-size: 13px;")
+            self._photos_grid.addWidget(empty, 0, 0)
+            return
+
+        cols = 4
+        for idx, photo in enumerate(photos):
+            cell = self._make_thumbnail(photo)
+            self._photos_grid.addWidget(cell, idx // cols, idx % cols)
+
+    def _make_thumbnail(self, photo) -> QWidget:
+        cell = QWidget()
+        cell.setFixedSize(150, 180)
+        cell_layout = QVBoxLayout(cell)
+        cell_layout.setContentsMargins(0, 0, 0, 0)
+        cell_layout.setSpacing(4)
+
+        # Image
+        thumb = QLabel()
+        thumb.setFixedSize(150, 150)
+        thumb.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        thumb.setStyleSheet("border: 1px solid #c8cdd8; border-radius: 6px; background: #f0f2f5;")
+        thumb.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        if os.path.isfile(photo.filepath):
+            pix = QPixmap(photo.filepath)
+            if not pix.isNull():
+                pix = pix.scaled(148, 148, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                thumb.setPixmap(pix)
+            else:
+                thumb.setText("❌")
+        else:
+            thumb.setText("קובץ חסר")
+            thumb.setStyleSheet(thumb.styleSheet() + "color: #aaa;")
+
+        thumb.mousePressEvent = lambda e, p=photo: self._view_photo(p)
+        cell_layout.addWidget(thumb)
+
+        # Filename + delete button
+        bottom = QHBoxLayout()
+        bottom.setContentsMargins(0, 0, 0, 0)
+        name_lbl = QLabel(photo.filename)
+        name_lbl.setStyleSheet("font-size: 10px; color: #888;")
+        name_lbl.setMaximumWidth(110)
+        name_lbl.setWordWrap(False)
+        name_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
+        bottom.addWidget(name_lbl, 1)
+
+        btn_del = QPushButton("✕")
+        btn_del.setFixedSize(22, 22)
+        btn_del.setObjectName("btn_danger")
+        btn_del.setStyleSheet("QPushButton#btn_danger { font-size: 10px; padding: 0; }")
+        btn_del.clicked.connect(lambda checked=False, pid=photo.id: self._delete_photo(pid))
+        bottom.addWidget(btn_del)
+        cell_layout.addLayout(bottom)
+
+        return cell
+
+    def _upload_photo(self):
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "בחר תמונות", "",
+            "תמונות (*.jpg *.jpeg *.png *.gif *.bmp *.webp *.heic *.heif)"
+        )
+        if not paths:
+            return
+        errors = []
+        for path in paths:
+            try:
+                file_controller.add_photo(self._customer_id, path)
+            except Exception as e:
+                errors.append(str(e))
+        if errors:
+            QMessageBox.warning(self, "שגיאה", "\n".join(errors))
+        self._refresh_photos()
+
+    def _delete_photo(self, photo_id: int):
+        reply = QMessageBox.question(
+            self, "מחיקת תמונה", "האם אתה בטוח שברצונך למחוק את התמונה?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            file_controller.delete_photo(photo_id)
+            self._refresh_photos()
+
+    def _view_photo(self, photo):
+        if not os.path.isfile(photo.filepath):
+            QMessageBox.warning(self, "שגיאה", "קובץ התמונה לא נמצא")
+            return
+        dlg = _PhotoViewerDialog(photo.filepath, photo.filename, parent=self)
+        dlg.exec()
+
+
+class _PhotoViewerDialog(QDialog):
+    def __init__(self, filepath: str, filename: str, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(filename)
+        self.setModal(True)
+        self.setMinimumSize(400, 400)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("QScrollArea { border: none; }")
+
+        img_label = QLabel()
+        img_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pix = QPixmap(filepath)
+        if not pix.isNull():
+            screen = self.screen().availableGeometry() if self.screen() else None
+            max_w = int(screen.width() * 0.8) if screen else 900
+            max_h = int(screen.height() * 0.8) if screen else 700
+            if pix.width() > max_w or pix.height() > max_h:
+                pix = pix.scaled(max_w, max_h, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            self.resize(pix.width() + 24, pix.height() + 60)
+            img_label.setPixmap(pix)
+        else:
+            img_label.setText("לא ניתן לטעון את התמונה")
+
+        scroll.setWidget(img_label)
+        layout.addWidget(scroll)
+
+        btn_close = QPushButton("סגור")
+        btn_close.setFixedHeight(32)
+        btn_close.clicked.connect(self.accept)
+        layout.addWidget(btn_close, alignment=Qt.AlignmentFlag.AlignCenter)
 
 
 class _ConfirmByTypingDialog(QDialog):
