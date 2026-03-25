@@ -16,8 +16,11 @@ def main():
     app.setStyle(QStyleFactory.create("Fusion"))
     app.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
     app.setStyleSheet(APP_STYLE)
+    app.setQuitOnLastWindowClosed(False)
     init_db()
     auth_service.ensure_default_manager()
+    from services.activity_service import purge_old_logs
+    purge_old_logs()
 
     main_window: MainWindow | None = None
 
@@ -54,6 +57,8 @@ def main():
                 main_window.logout_requested.connect(on_logout)
                 main_window.show()
                 sys.exit(app.exec())
+        except Exception:
+            pass
         finally:
             db.close()
 

@@ -3,6 +3,8 @@ from sqlalchemy import extract
 from sqlalchemy.orm import Session
 from database.db import get_session
 from database.models import Customer, CustomerStatus, Gender
+from services.activity_service import log_action
+from services.auth_service import auth_service
 
 
 class CustomerController:
@@ -145,6 +147,9 @@ class CustomerController:
             session.commit()
             session.refresh(customer)
             session.expunge(customer)
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"הוספת לקוח: {name.strip()} {surname.strip()}")
             return customer
         finally:
             session.close()
@@ -186,6 +191,9 @@ class CustomerController:
             session.commit()
             session.refresh(customer)
             session.expunge(customer)
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"עדכון לקוח: {name.strip()} {surname.strip()}")
             return customer
         finally:
             session.close()
@@ -196,8 +204,21 @@ class CustomerController:
             customer = session.query(Customer).filter_by(id=customer_id).first()
             if not customer:
                 raise ValueError(f"לקוח עם מזהה {customer_id} לא נמצא")
+            full_name = f"{customer.name} {customer.surname}"
             session.delete(customer)
             session.commit()
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username, f"מחיקת לקוח: {full_name}")
+        finally:
+            session.close()
+
+    def set_profile_photo(self, customer_id: int, path: str | None):
+        session = get_session()
+        try:
+            customer = session.query(Customer).filter_by(id=customer_id).first()
+            if customer:
+                customer.profile_photo_path = path
+                session.commit()
         finally:
             session.close()
 

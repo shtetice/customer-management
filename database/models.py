@@ -47,6 +47,7 @@ class Customer(Base):
     date_of_birth = Column(Date, nullable=True)
     status = Column(Enum(CustomerStatus), nullable=False, default=CustomerStatus.LEAD)
     notes = Column(Text, nullable=True)
+    profile_photo_path = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -152,3 +153,13 @@ class UserPermission(Base):
 
     user = relationship("User", back_populates="permissions")
     feature = relationship("Feature", back_populates="permissions")
+
+
+class ActivityLog(Base):
+    """Audit log of user actions."""
+    __tablename__ = "activity_logs"
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String(100), nullable=False)
+    action = Column(String(300), nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)

@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QPushButton, QLabel, QStackedWidget, QSizePolicy
+    QPushButton, QLabel, QStackedWidget, QSizePolicy, QMessageBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -10,8 +10,10 @@ from ui.screens.add_customer_screen import AddCustomerScreen
 from ui.screens.customer_detail_screen import CustomerDetailScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.user_management_screen import UserManagementScreen
+from ui.screens.activity_log_screen import ActivityLogScreen
 from ui.styles import APP_STYLE
 from services.auth_service import auth_service
+from services.settings_service import settings_service
 
 
 class MainWindow(QMainWindow):
@@ -19,6 +21,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
+        self._logging_out = False
         self.setWindowTitle("מערכת ניהול לקוחות")
         self.setMinimumSize(1126, 748)
         self.resize(1126, 748)
@@ -49,6 +52,7 @@ class MainWindow(QMainWindow):
         self._nav_buttons = {}
         self._add_nav_button(sidebar_layout, "customers", "👥  לקוחות", "customers.view")
         self._add_nav_button(sidebar_layout, "users", "👤  משתמשים", "users.manage")
+        self._add_nav_button(sidebar_layout, "logs", "📋  יומן פעילות", "logs.view")
         self._add_nav_button(sidebar_layout, "settings", "⚙️  הגדרות", "settings.view")
         sidebar_layout.addStretch()
 
@@ -100,6 +104,8 @@ class MainWindow(QMainWindow):
             self._show_customer_list()
         elif key == "users":
             self._show_user_management()
+        elif key == "logs":
+            self._show_activity_log()
         elif key == "settings":
             self._show_settings()
 
@@ -144,6 +150,13 @@ class MainWindow(QMainWindow):
         self.stack.setCurrentWidget(screen)
         self._set_nav_active("users")
 
+    def _show_activity_log(self):
+        self._clear_stack()
+        screen = ActivityLogScreen()
+        self.stack.addWidget(screen)
+        self.stack.setCurrentWidget(screen)
+        self._set_nav_active("logs")
+
     def _show_settings(self):
         self._clear_stack()
         screen = SettingsScreen()
@@ -163,7 +176,43 @@ class MainWindow(QMainWindow):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
 
+    def closeEvent(self, event):
+        self._run_autobackup()
+        event.accept()
+        if not self._logging_out:
+            from PyQt6.QtWidgets import QApplication
+            QApplication.instance().quit()
+
+    def _run_autobackup(self):
+        backup_folder = settings_service.get("backup_folder", "")
+        backup_password = settings_service.get("backup_password", "")
+        if not backup_folder or not backup_password:
+            return
+
+        # Skip backup if nothing has changed since the last one
+        from services.activity_service import has_activity_since
+        from datetime import datetime
+        last_backup_str = settings_service.get("last_backup_time", "")
+        if last_backup_str:
+            try:
+                last_backup_dt = datetime.fromisoformat(last_backup_str)
+                if not has_activity_since(last_backup_dt):
+                    return
+            except ValueError:
+                pass  # malformed timestamp — proceed with backup
+
+        try:
+            from services.backup_service import run_backup
+            run_backup(backup_folder, backup_password)
+            settings_service.set("last_backup_time", datetime.utcnow().isoformat())
+        except Exception as e:
+            QMessageBox.warning(
+                self, "שגיאת גיבוי",
+                f"הגיבוי האוטומטי נכשל:\n{e}"
+            )
+
     def _logout(self):
+        self._logging_out = True
         from services.session_service import session_service
         session_service.clear()
         auth_service.logout()

@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
-from database.models import Base, Feature, ContactLog
+from database.models import Base, Feature, ContactLog, ActivityLog
 
 DATABASE_URL = "sqlite:///customer_management.db"
 
@@ -22,11 +22,12 @@ def _migrate():
             text("PRAGMA table_info(customers)")
         )]
         for col, typedef in [
-            ("phone2",        "VARCHAR(30)"),
-            ("phone3",        "VARCHAR(30)"),
-            ("address",       "VARCHAR(300)"),
-            ("city",          "VARCHAR(100)"),
-            ("date_of_birth", "DATE"),
+            ("phone2",             "VARCHAR(30)"),
+            ("phone3",             "VARCHAR(30)"),
+            ("address",            "VARCHAR(300)"),
+            ("city",               "VARCHAR(100)"),
+            ("date_of_birth",      "DATE"),
+            ("profile_photo_path", "VARCHAR(500)"),
         ]:
             if col not in existing:
                 conn.execute(text(
@@ -38,6 +39,13 @@ def _migrate():
         )]
         if "pdf_path" not in receipts_cols:
             conn.execute(text("ALTER TABLE receipts ADD COLUMN pdf_path VARCHAR(500)"))
+
+        users_cols = [row[1] for row in conn.execute(
+            text("PRAGMA table_info(users)")
+        )]
+        if "is_active" not in users_cols:
+            conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
+            conn.execute(text("UPDATE users SET is_active = 1 WHERE is_active IS NULL"))
 
         conn.commit()
 
@@ -63,6 +71,7 @@ DEFAULT_FEATURES = [
     ("files.upload",        "העלאת קבצים",             "העלאת קבצים ללקוח"),
     ("users.manage",        "ניהול משתמשים",           "יצירה ועריכה של משתמשים (מנהל בלבד)"),
     ("settings.view",       "הגדרות",                  "גישה למסך ההגדרות"),
+    ("logs.view",           "יומן פעילות",             "צפייה ביומן הפעילות (מנהל בלבד)"),
 ]
 
 

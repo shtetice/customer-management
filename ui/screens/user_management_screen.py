@@ -19,7 +19,7 @@ ROLE_LABELS = {
 }
 
 # Features that only managers can use — no point showing them as toggleable
-_MANAGER_ONLY = {"users.manage"}
+_MANAGER_ONLY = {"users.manage", "logs.view"}
 
 
 class UserManagementScreen(QWidget):

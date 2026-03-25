@@ -21,12 +21,17 @@ class AuthService:
                 # Detach from session so we can use it freely
                 session.expunge(user)
                 self._current_user = user
+                from services.activity_service import log_action
+                log_action(username, "התחברות למערכת")
                 return True
             return False
         finally:
             session.close()
 
     def logout(self):
+        if self._current_user:
+            from services.activity_service import log_action
+            log_action(self._current_user.username, "התנתקות מהמערכת")
         self._current_user = None
 
     @property
@@ -78,6 +83,9 @@ class AuthService:
             session.commit()
             session.refresh(user)
             session.expunge(user)
+            if self._current_user:
+                from services.activity_service import log_action
+                log_action(self._current_user.username, f"יצירת משתמש: {username}")
             return user
         finally:
             session.close()
@@ -112,6 +120,10 @@ class AuthService:
             user.role = role
             user.is_active = is_active
             session.commit()
+            if self._current_user:
+                from services.activity_service import log_action
+                status = "פעיל" if is_active else "מושבת"
+                log_action(self._current_user.username, f"עדכון משתמש: {user.username} (סטטוס: {status})")
         finally:
             session.close()
 
@@ -121,8 +133,12 @@ class AuthService:
             user = session.query(User).filter_by(id=user_id).first()
             if not user:
                 raise ValueError("משתמש לא נמצא")
+            deleted_username = user.username
             session.delete(user)
             session.commit()
+            if self._current_user:
+                from services.activity_service import log_action
+                log_action(self._current_user.username, f"מחיקת משתמש: {deleted_username}")
         finally:
             session.close()
 
