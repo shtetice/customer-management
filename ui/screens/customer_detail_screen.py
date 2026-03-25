@@ -271,33 +271,28 @@ class CustomerDetailScreen(QWidget):
 
     @staticmethod
     def _add_grid_row(rows: QVBoxLayout, label: str, value: str):
-        # Each row is an explicit HBox: [value — stretches left] [label — fixed width right]
-        # Using LTR layout so column ordering is predictable regardless of parent direction.
+        # Stacked layout: label line on top, value line below — no column widths to fight.
         row_widget = QWidget()
         row_widget.setStyleSheet("background: transparent; border: none;")
-        row_widget.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-        row_hbox = QHBoxLayout(row_widget)
-        row_hbox.setContentsMargins(0, 0, 0, 0)
-        row_hbox.setSpacing(16)
+        row_vbox = QVBoxLayout(row_widget)
+        row_vbox.setContentsMargins(0, 0, 0, 0)
+        row_vbox.setSpacing(1)
+
+        lbl = QLabel(label.upper())
+        lbl.setFont(QFont("Arial", 9, QFont.Weight.Bold))
+        lbl.setStyleSheet("color: #a0aab4; background: transparent; border: none;")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
 
         val = QLabel(value if value else "—")
         val.setWordWrap(True)
-        val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignAbsolute | Qt.AlignmentFlag.AlignTop)
+        val.setAlignment(Qt.AlignmentFlag.AlignRight)
         if value:
             val.setStyleSheet("font-size: 13px; color: #1a2533; background: transparent; border: none;")
         else:
             val.setStyleSheet("font-size: 13px; color: #bdc3c7; font-style: italic; background: transparent; border: none;")
 
-        label_font = QFont("Arial", 10, QFont.Weight.Bold)
-        lbl = QLabel(label.upper())
-        lbl.setFont(label_font)
-        lbl.setStyleSheet("color: #95a5a6; background: transparent; border: none;")
-        lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
-        lbl.setFixedWidth(100)  # explicit fixed width — never clipped
-
-        # LTR order: value fills the left, label sits on the right
-        row_hbox.addWidget(val, 1)
-        row_hbox.addWidget(lbl, 0)
+        row_vbox.addWidget(lbl)
+        row_vbox.addWidget(val)
 
         rows.addWidget(row_widget)
 
