@@ -615,12 +615,14 @@ class CustomerDetailScreen(QWidget):
         dlg.exec()
 
     def _delete_receipt(self, receipt_id: int):
-        reply = QMessageBox.question(
-            self, "אישור מחיקה", "האם למחוק קבלה זו?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+        dlg = _ConfirmByTypingDialog(
+            title="אישור מחיקת קבלה",
+            message="פעולה זו תמחק את הקבלה לצמיתות.<br>כדי לאשר, הקלד <b>כן</b>:",
+            expected="כן",
+            confirm_label="מחק קבלה",
+            parent=self,
         )
-        if reply == QMessageBox.StandardButton.Yes:
+        if dlg.exec() == QDialog.DialogCode.Accepted:
             try:
                 receipt_controller.delete(receipt_id)
                 self._refresh_receipts()
@@ -745,41 +747,37 @@ class CustomerDetailScreen(QWidget):
         return item
 
 
-class _DeleteConfirmDialog(QDialog):
-    def __init__(self, first_name: str, last_name: str, parent=None):
+class _ConfirmByTypingDialog(QDialog):
+    """Generic confirmation dialog that requires the user to type an exact word."""
+
+    def __init__(self, title: str, message: str, expected: str,
+                 confirm_label: str = "אשר", parent=None):
         super().__init__(parent)
-        self._first_name = first_name
+        self._expected = expected
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.setWindowTitle("אישור מחיקה")
+        self.setWindowTitle(title)
         self.setFixedWidth(380)
         self.setModal(True)
-        self._build_ui(first_name, last_name)
 
-    def _build_ui(self, first_name: str, last_name: str):
         layout = QVBoxLayout(self)
         layout.setSpacing(14)
         layout.setContentsMargins(24, 24, 24, 24)
 
-        # Warning icon + title
-        title = QLabel("⚠️  מחיקת לקוח")
-        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        title.setStyleSheet("color: #c0392b;")
-        layout.addWidget(title)
+        hdr = QLabel(f"⚠️  {title}")
+        hdr.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        hdr.setStyleSheet("color: #c0392b;")
+        layout.addWidget(hdr)
 
-        msg = QLabel(
-            f"פעולה זו תמחק לצמיתות את <b>{first_name} {last_name}</b> "
-            f"וכל הנתונים המשויכים (טיפולים, קבלות, יצירות קשר).<br><br>"
-            f"כדי לאשר, הקלד את השם הפרטי של הלקוח:"
-        )
-        msg.setWordWrap(True)
-        msg.setStyleSheet("font-size: 13px; color: #2c3e50;")
-        msg.setTextFormat(Qt.TextFormat.RichText)
-        layout.addWidget(msg)
+        msg_label = QLabel(message)
+        msg_label.setWordWrap(True)
+        msg_label.setStyleSheet("font-size: 13px; color: #2c3e50;")
+        msg_label.setTextFormat(Qt.TextFormat.RichText)
+        layout.addWidget(msg_label)
 
-        self._name_input = QLineEdit()
-        self._name_input.setPlaceholderText(f"הקלד: {first_name}")
-        self._name_input.setMinimumHeight(36)
-        self._name_input.setStyleSheet("""
+        self._input = QLineEdit()
+        self._input.setPlaceholderText(f"הקלד: {expected}")
+        self._input.setMinimumHeight(36)
+        self._input.setStyleSheet("""
             QLineEdit {
                 border: 1px solid #ccc; border-radius: 5px;
                 padding: 6px 10px; font-size: 13px;
@@ -787,10 +785,9 @@ class _DeleteConfirmDialog(QDialog):
             }
             QLineEdit:focus { border-color: #e74c3c; }
         """)
-        self._name_input.textChanged.connect(self._on_text_changed)
-        layout.addWidget(self._name_input)
+        self._input.textChanged.connect(self._on_text_changed)
+        layout.addWidget(self._input)
 
-        # Buttons
         btn_row = QHBoxLayout()
         btn_row.addStretch()
 
@@ -802,10 +799,10 @@ class _DeleteConfirmDialog(QDialog):
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
 
-        self._btn_delete = QPushButton("מחק לצמיתות")
-        self._btn_delete.setFixedHeight(34)
-        self._btn_delete.setEnabled(False)
-        self._btn_delete.setStyleSheet("""
+        self._btn_confirm = QPushButton(confirm_label)
+        self._btn_confirm.setFixedHeight(34)
+        self._btn_confirm.setEnabled(False)
+        self._btn_confirm.setStyleSheet("""
             QPushButton {
                 background: #e74c3c; color: white;
                 border: none; border-radius: 4px;
@@ -814,10 +811,25 @@ class _DeleteConfirmDialog(QDialog):
             QPushButton:hover { background: #c0392b; }
             QPushButton:disabled { background: #f5b7b1; color: white; }
         """)
-        self._btn_delete.clicked.connect(self.accept)
-        btn_row.addWidget(self._btn_delete)
+        self._btn_confirm.clicked.connect(self.accept)
+        btn_row.addWidget(self._btn_confirm)
 
         layout.addLayout(btn_row)
 
     def _on_text_changed(self, text: str):
-        self._btn_delete.setEnabled(text.strip() == self._first_name)
+        self._btn_confirm.setEnabled(text.strip() == self._expected)
+
+
+class _DeleteConfirmDialog(_ConfirmByTypingDialog):
+    def __init__(self, first_name: str, last_name: str, parent=None):
+        super().__init__(
+            title="מחיקת לקוח",
+            message=(
+                f"פעולה זו תמחק לצמיתות את <b>{first_name} {last_name}</b> "
+                f"וכל הנתונים המשויכים (טיפולים, קבלות, יצירות קשר).<br><br>"
+                f"כדי לאשר, הקלד את השם הפרטי של הלקוח:"
+            ),
+            expected=first_name,
+            confirm_label="מחק לצמיתות",
+            parent=parent,
+        )
