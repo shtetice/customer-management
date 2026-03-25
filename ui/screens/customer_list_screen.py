@@ -30,6 +30,7 @@ class CustomerListScreen(QWidget):
             padding: 4px 10px;
             font-size: 13px;
             background: white;
+            color: #2c3e50;
         }
         QComboBox:focus { border-color: #3498db; }
         QComboBox::drop-down { border: none; width: 24px; }
