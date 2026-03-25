@@ -767,15 +767,24 @@ class CustomerDetailScreen(QWidget):
         thumb.mousePressEvent = lambda e, p=photo: self._view_photo(p)
         cell_layout.addWidget(thumb)
 
-        # Filename + delete button
+        # Filename + action buttons
         bottom = QHBoxLayout()
         bottom.setContentsMargins(0, 0, 0, 0)
+        bottom.setSpacing(3)
         name_lbl = QLabel(photo.filename)
         name_lbl.setStyleSheet("font-size: 10px; color: #888;")
-        name_lbl.setMaximumWidth(110)
+        name_lbl.setMaximumWidth(86)
         name_lbl.setWordWrap(False)
         name_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
         bottom.addWidget(name_lbl, 1)
+
+        btn_save = QPushButton("💾")
+        btn_save.setFixedSize(22, 22)
+        btn_save.setObjectName("btn_secondary")
+        btn_save.setStyleSheet("QPushButton#btn_secondary { font-size: 10px; padding: 0; }")
+        btn_save.setToolTip("שמור תמונה")
+        btn_save.clicked.connect(lambda checked=False, p=photo: self._save_photo(p))
+        bottom.addWidget(btn_save)
 
         btn_del = QPushButton("✕")
         btn_del.setFixedSize(22, 22)
@@ -814,6 +823,21 @@ class CustomerDetailScreen(QWidget):
             file_controller.delete_photo(photo_id)
             self._refresh_photos()
 
+    def _save_photo(self, photo):
+        import shutil
+        ext = os.path.splitext(photo.filename)[1] or f".{photo.filetype}"
+        dest, _ = QFileDialog.getSaveFileName(
+            self, "שמור תמונה", photo.filename,
+            f"תמונות (*{ext});;כל הקבצים (*)"
+        )
+        if not dest:
+            return
+        try:
+            shutil.copy2(photo.filepath, dest)
+            QMessageBox.information(self, "נשמר", f"התמונה נשמרה בהצלחה:\n{dest}")
+        except Exception as e:
+            QMessageBox.critical(self, "שגיאה", f"לא ניתן לשמור את התמונה:\n{e}")
+
     def _view_photo(self, photo):
         if not os.path.isfile(photo.filepath):
             QMessageBox.warning(self, "שגיאה", "קובץ התמונה לא נמצא")
@@ -825,6 +849,8 @@ class CustomerDetailScreen(QWidget):
 class _PhotoViewerDialog(QDialog):
     def __init__(self, filepath: str, filename: str, parent=None):
         super().__init__(parent)
+        self._filepath = filepath
+        self._filename = filename
         self.setWindowTitle(filename)
         self.setModal(True)
         self.setMinimumSize(400, 400)
@@ -853,10 +879,32 @@ class _PhotoViewerDialog(QDialog):
         scroll.setWidget(img_label)
         layout.addWidget(scroll)
 
+        btn_row = QHBoxLayout()
+        btn_save = QPushButton("💾  שמור תמונה")
+        btn_save.setFixedHeight(32)
+        btn_save.setObjectName("btn_secondary")
+        btn_save.clicked.connect(self._save)
+        btn_row.addWidget(btn_save)
         btn_close = QPushButton("סגור")
         btn_close.setFixedHeight(32)
         btn_close.clicked.connect(self.accept)
-        layout.addWidget(btn_close, alignment=Qt.AlignmentFlag.AlignCenter)
+        btn_row.addWidget(btn_close)
+        layout.addLayout(btn_row)
+
+    def _save(self):
+        import shutil
+        ext = os.path.splitext(self._filename)[1] or ".jpg"
+        dest, _ = QFileDialog.getSaveFileName(
+            self, "שמור תמונה", self._filename,
+            f"תמונות (*{ext});;כל הקבצים (*)"
+        )
+        if not dest:
+            return
+        try:
+            shutil.copy2(self._filepath, dest)
+            QMessageBox.information(self, "נשמר", f"התמונה נשמרה בהצלחה:\n{dest}")
+        except Exception as e:
+            QMessageBox.critical(self, "שגיאה", f"לא ניתן לשמור את התמונה:\n{e}")
 
 
 class _ConfirmByTypingDialog(QDialog):
