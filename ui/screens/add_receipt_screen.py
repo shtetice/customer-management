@@ -106,15 +106,16 @@ class AddReceiptDialog(QDialog):
 
         # PDF attachment
         layout.addWidget(self._lbl("קובץ PDF מצורף (אופציונלי)"))
-        pdf_row = QHBoxLayout()
-        pdf_row.setSpacing(8)
 
         self._pdf_name_label = QLabel("לא נבחר קובץ")
         self._pdf_name_label.setStyleSheet("font-size: 12px; color: #888;")
-        self._pdf_name_label.setWordWrap(False)
-        pdf_row.addWidget(self._pdf_name_label, stretch=1)
+        self._pdf_name_label.setWordWrap(True)
+        layout.addWidget(self._pdf_name_label)
 
-        btn_pick_pdf = QPushButton("בחר PDF")
+        pdf_btn_row = QHBoxLayout()
+        pdf_btn_row.setSpacing(8)
+
+        btn_pick_pdf = QPushButton("בחר קובץ PDF")
         btn_pick_pdf.setFixedHeight(32)
         btn_pick_pdf.setStyleSheet("""
             QPushButton {
@@ -125,22 +126,24 @@ class AddReceiptDialog(QDialog):
             QPushButton:hover { background: #d6eaf8; border-color: #3498db; }
         """)
         btn_pick_pdf.clicked.connect(self._pick_pdf)
-        pdf_row.addWidget(btn_pick_pdf)
+        pdf_btn_row.addWidget(btn_pick_pdf)
 
-        self._btn_clear_pdf = QPushButton("✕")
-        self._btn_clear_pdf.setFixedSize(32, 32)
+        self._btn_clear_pdf = QPushButton("הסר קובץ")
+        self._btn_clear_pdf.setFixedHeight(32)
         self._btn_clear_pdf.setStyleSheet("""
             QPushButton {
                 background: #fdf2f2; color: #e74c3c;
-                border: 1px solid #f5c6c6; border-radius: 4px; font-size: 13px;
+                border: 1px solid #f5c6c6; border-radius: 4px;
+                font-size: 12px; padding: 0 10px;
             }
-            QPushButton:hover { background: #fce8e8; }
+            QPushButton:hover { background: #fce8e8; border-color: #e74c3c; }
         """)
         self._btn_clear_pdf.setVisible(False)
         self._btn_clear_pdf.clicked.connect(self._clear_pdf_selection)
-        pdf_row.addWidget(self._btn_clear_pdf)
+        pdf_btn_row.addWidget(self._btn_clear_pdf)
 
-        layout.addLayout(pdf_row)
+        pdf_btn_row.addStretch()
+        layout.addLayout(pdf_btn_row)
 
         # Error
         self.error_label = QLabel("")
@@ -163,11 +166,6 @@ class AddReceiptDialog(QDialog):
         btn_cancel.clicked.connect(self.reject)
         btn_row.addWidget(btn_cancel)
 
-        btn_save = QPushButton("שמור קבלה")
-        btn_save.setFixedHeight(34)
-        btn_save.clicked.connect(lambda: self._save(export_file=False))
-        btn_row.addWidget(btn_save)
-
         btn_save_file = QPushButton("ייצא קובץ")
         btn_save_file.setFixedHeight(34)
         btn_save_file.setStyleSheet("""
@@ -176,6 +174,11 @@ class AddReceiptDialog(QDialog):
         """)
         btn_save_file.clicked.connect(lambda: self._save(export_file=True))
         btn_row.addWidget(btn_save_file)
+
+        btn_save = QPushButton("שמור קבלה")
+        btn_save.setFixedHeight(34)
+        btn_save.clicked.connect(lambda: self._save(export_file=False))
+        btn_row.addWidget(btn_save)
 
         layout.addLayout(btn_row)
 
