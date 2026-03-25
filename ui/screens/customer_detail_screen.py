@@ -282,7 +282,7 @@ class CustomerDetailScreen(QWidget):
 
         val = QLabel(value if value else "—")
         val.setWordWrap(True)
-        val.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
+        val.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         if value:
             val.setStyleSheet("font-size: 13px; color: #1a2533; background: transparent; border: none;")
         else:
@@ -292,9 +292,7 @@ class CustomerDetailScreen(QWidget):
         lbl.setFont(QFont("Arial", 9, QFont.Weight.Bold))
         lbl.setStyleSheet("color: #a0aab4; background: transparent; border: none;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
-        # Let the label size itself — no setFixedWidth, no clipping
         lbl.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Preferred)
-        lbl.adjustSize()
 
         row_hbox.addWidget(val, 1)   # value fills left space
         row_hbox.addWidget(lbl, 0)   # label takes its natural width on right
