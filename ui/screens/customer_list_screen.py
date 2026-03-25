@@ -143,7 +143,7 @@ class CustomerListScreen(QWidget):
         for i, name in enumerate(self._HEBREW_MONTHS, start=1):
             self.month_filter.addItem(name, i)
         self.month_filter.currentIndexChanged.connect(self._refresh)
-        filter_row.addWidget(self.month_filter)
+        filter_row.addWidget(self.month_filter, 1)
 
         year_label = QLabel("שנת לידה:")
         year_label.setStyleSheet("color: #555; font-size: 13px;")
@@ -154,7 +154,7 @@ class CustomerListScreen(QWidget):
         self.year_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 90px; }")
         self.year_filter.addItem("כל השנים", None)
         self.year_filter.currentIndexChanged.connect(self._refresh)
-        filter_row.addWidget(self.year_filter)
+        filter_row.addWidget(self.year_filter, 1)
 
         city_label = QLabel("עיר:")
         city_label.setStyleSheet("color: #555; font-size: 13px;")
@@ -165,7 +165,7 @@ class CustomerListScreen(QWidget):
         self.city_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 110px; }")
         self.city_filter.addItem("כל הערים", None)
         self.city_filter.currentIndexChanged.connect(self._refresh)
-        filter_row.addWidget(self.city_filter)
+        filter_row.addWidget(self.city_filter, 1)
 
         gender_label = QLabel("מגדר:")
         gender_label.setStyleSheet("color: #555; font-size: 13px;")
@@ -179,9 +179,7 @@ class CustomerListScreen(QWidget):
         self.gender_filter.addItem("נקבה", Gender.FEMALE)
         self.gender_filter.addItem("אחר", Gender.OTHER)
         self.gender_filter.currentIndexChanged.connect(self._refresh)
-        filter_row.addWidget(self.gender_filter)
-
-        filter_row.addStretch()
+        filter_row.addWidget(self.gender_filter, 1)
 
         layout.addLayout(filter_row)
 
