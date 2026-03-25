@@ -39,10 +39,7 @@ def main():
         main_window.show()
 
     def on_logout():
-        # Show login before closing main window so the app doesn't quit
-        show_login()
-        if main_window:
-            main_window.close()
+        pass  # MainWindow._logout() calls self.close() → closeEvent handles quit
 
     # Try to restore a remembered session
     saved = session_service.load()

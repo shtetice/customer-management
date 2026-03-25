@@ -21,7 +21,6 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self._logging_out = False
         self.setWindowTitle("מערכת ניהול לקוחות")
         self.setMinimumSize(1126, 748)
         self.resize(1126, 748)
@@ -179,9 +178,8 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self._run_autobackup()
         event.accept()
-        if not self._logging_out:
-            from PyQt6.QtWidgets import QApplication
-            QApplication.instance().quit()
+        from PyQt6.QtWidgets import QApplication
+        QApplication.instance().quit()
 
     def _run_autobackup(self):
         backup_folder = settings_service.get("backup_folder", "")
@@ -212,7 +210,6 @@ class MainWindow(QMainWindow):
             )
 
     def _logout(self):
-        self._logging_out = True
         from services.session_service import session_service
         session_service.clear()
         auth_service.logout()
