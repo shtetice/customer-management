@@ -1,4 +1,5 @@
 import pytest
+import time
 from datetime import date
 from controllers.customer_controller import CustomerController
 from database.models import CustomerStatus, Gender
@@ -133,3 +134,35 @@ def test_update_clears_dob(ctrl):
     updated = ctrl.update(c.id, c.name, c.surname, None, "", "", "",
                           "", CustomerStatus.LEAD, "", date_of_birth=None)
     assert updated.date_of_birth is None
+
+
+# ---------- updated_at ----------
+
+def test_updated_at_set_on_create(ctrl):
+    c = _create(ctrl)
+    assert c.updated_at is not None
+    assert c.created_at is not None
+
+
+def test_updated_at_advances_on_full_update(ctrl):
+    c = _create(ctrl)
+    time.sleep(0.05)
+    updated = ctrl.update(c.id, c.name, c.surname, c.gender, c.phone or "",
+                          "", "", c.email or "", CustomerStatus.VIP, "")
+    assert updated.updated_at > c.updated_at
+
+
+def test_updated_at_advances_on_profile_photo_update(ctrl):
+    c = _create(ctrl)
+    time.sleep(0.05)
+    ctrl.set_profile_photo(c.id, "/some/path/photo.jpg")
+    refreshed = ctrl.get_by_id(c.id)
+    assert refreshed.updated_at > c.updated_at
+
+
+def test_created_at_unchanged_after_update(ctrl):
+    c = _create(ctrl)
+    time.sleep(0.05)
+    updated = ctrl.update(c.id, c.name, c.surname, c.gender, c.phone or "",
+                          "", "", c.email or "", CustomerStatus.VIP, "")
+    assert updated.created_at == c.created_at
