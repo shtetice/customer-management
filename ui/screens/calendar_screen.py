@@ -2,9 +2,9 @@ import calendar as _cal
 from datetime import datetime, date, timedelta
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QScrollArea, QFrame, QSizePolicy, QStackedWidget,
+    QScrollArea, QFrame, QSizePolicy, QStackedWidget, QStyle,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QPoint
+from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize
 from PyQt6.QtGui import QFont, QPainter, QColor, QPen, QCursor
 
 from controllers.appointment_controller import appointment_controller
@@ -551,8 +551,10 @@ class CalendarScreen(QWidget):
         top.addSpacing(8)
 
         # Navigation
-        self._btn_prev = QPushButton("<")
+        self._btn_prev = QPushButton()
         self._btn_prev.setFixedSize(36, 34)
+        self._btn_prev.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowLeft))
+        self._btn_prev.setIconSize(QSize(16, 16))
         self._btn_prev.setStyleSheet(_NAV_BTN)
         self._btn_prev.clicked.connect(self._prev_period)
         top.addWidget(self._btn_prev)
@@ -563,8 +565,10 @@ class CalendarScreen(QWidget):
         self._period_lbl.setStyleSheet("font-size: 14px; color: #2c3e50; font-weight: bold;")
         top.addWidget(self._period_lbl)
 
-        self._btn_next = QPushButton(">")
+        self._btn_next = QPushButton()
         self._btn_next.setFixedSize(36, 34)
+        self._btn_next.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowRight))
+        self._btn_next.setIconSize(QSize(16, 16))
         self._btn_next.setStyleSheet(_NAV_BTN)
         self._btn_next.clicked.connect(self._next_period)
         top.addWidget(self._btn_next)
