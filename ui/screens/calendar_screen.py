@@ -266,16 +266,17 @@ class _CalendarGrid(QWidget):
         customer_name = self._customer_names.get(appt.customer_id, "לקוח")
         old_str = appt.date.strftime("%d/%m/%Y %H:%M")
         new_str = new_dt.strftime("%d/%m/%Y %H:%M")
-        reply = QMessageBox.question(
-            self,
-            "אישור הזזת תור",
+        msg = QMessageBox(self)
+        msg.setWindowTitle("אישור הזזת תור")
+        msg.setText(
             f"להזיז את התור של {customer_name}?\n\n"
             f"מ:  {old_str}\n"
-            f"אל:  {new_str}",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
+            f"אל:  {new_str}"
         )
-        if reply != QMessageBox.StandardButton.Yes:
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg.setDefaultButton(QMessageBox.StandardButton.No)
+        msg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        if msg.exec() != QMessageBox.StandardButton.Yes:
             self._rebuild_cards()
             return
 
