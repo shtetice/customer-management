@@ -174,7 +174,8 @@ class _AppointmentCard(QFrame):
 class _CalendarGrid(QWidget):
     slot_clicked        = pyqtSignal(datetime)
     appointment_clicked = pyqtSignal(int)
-    appointment_dropped = pyqtSignal()       # request parent to reload
+    appointment_dropped = pyqtSignal()
+    day_width_changed   = pyqtSignal(int)    # fires with new _day_w on resize
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -197,6 +198,7 @@ class _CalendarGrid(QWidget):
         super().resizeEvent(event)
         self._rebuild_cards()
         self.update()
+        self.day_width_changed.emit(self._day_w)
 
     def set_week(self, week_start: date, appointments: list, customer_names: dict):
         self._week_start      = week_start
@@ -613,7 +615,7 @@ class CalendarScreen(QWidget):
             lbl.setStyleSheet(
                 "font-size: 12px; color: #2c3e50; font-weight: bold; border: none; background: transparent;"
             )
-            wh_row.addWidget(lbl, 1)   # stretch=1 → equal width, fills dynamically
+            wh_row.addWidget(lbl)
             self._day_labels.append(lbl)
 
         time_spacer = QWidget()
@@ -634,6 +636,7 @@ class CalendarScreen(QWidget):
         self._grid.slot_clicked.connect(self._open_add)
         self._grid.appointment_clicked.connect(self._open_edit)
         self._grid.appointment_dropped.connect(self._load_current)
+        self._grid.day_width_changed.connect(self._sync_header_widths)
         scroll.setWidget(self._grid)
 
         week_vbox.addWidget(scroll)
@@ -732,6 +735,10 @@ class CalendarScreen(QWidget):
             if c:
                 names[cid] = f"{c.name} {c.surname}"
         return names
+
+    def _sync_header_widths(self, day_w: int):
+        for lbl in self._day_labels:
+            lbl.setFixedWidth(day_w)
 
     def _update_day_headers(self):
         today = date.today()
