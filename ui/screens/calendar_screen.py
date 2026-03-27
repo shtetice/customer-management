@@ -556,7 +556,7 @@ class CalendarScreen(QWidget):
         self._btn_prev.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowRight))
         self._btn_prev.setIconSize(QSize(16, 16))
         self._btn_prev.setStyleSheet(_NAV_BTN)
-        self._btn_prev.clicked.connect(self._prev_period)
+        self._btn_prev.clicked.connect(self._next_period)
         top.addWidget(self._btn_prev)
 
         self._period_lbl = QLabel()
@@ -570,7 +570,7 @@ class CalendarScreen(QWidget):
         self._btn_next.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowLeft))
         self._btn_next.setIconSize(QSize(16, 16))
         self._btn_next.setStyleSheet(_NAV_BTN)
-        self._btn_next.clicked.connect(self._next_period)
+        self._btn_next.clicked.connect(self._prev_period)
         top.addWidget(self._btn_next)
 
         btn_today = QPushButton("היום")
