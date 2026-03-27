@@ -553,7 +553,7 @@ class CalendarScreen(QWidget):
         # Navigation
         self._btn_prev = QPushButton()
         self._btn_prev.setFixedSize(36, 34)
-        self._btn_prev.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowLeft))
+        self._btn_prev.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowRight))
         self._btn_prev.setIconSize(QSize(16, 16))
         self._btn_prev.setStyleSheet(_NAV_BTN)
         self._btn_prev.clicked.connect(self._prev_period)
@@ -567,7 +567,7 @@ class CalendarScreen(QWidget):
 
         self._btn_next = QPushButton()
         self._btn_next.setFixedSize(36, 34)
-        self._btn_next.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowRight))
+        self._btn_next.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_ArrowLeft))
         self._btn_next.setIconSize(QSize(16, 16))
         self._btn_next.setStyleSheet(_NAV_BTN)
         self._btn_next.clicked.connect(self._next_period)
