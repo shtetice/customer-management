@@ -110,18 +110,18 @@ class _AppointmentCard(QFrame):
 
         time_lbl = QLabel(appt.date.strftime("%H:%M"))
         time_lbl.setStyleSheet(
-            f"color:{border_c}; font-size:10px; font-weight:bold; border:none; background:transparent;"
+            f"color:{border_c}; font-size:12px; font-weight:bold; border:none; background:transparent;"
         )
         vbox.addWidget(time_lbl)
 
         name_lbl = QLabel(customer_name)
-        name_lbl.setStyleSheet("color:#2c3e50; font-size:11px; border:none; background:transparent;")
+        name_lbl.setStyleSheet("color:#2c3e50; font-size:13px; border:none; background:transparent;")
         name_lbl.setWordWrap(True)
         vbox.addWidget(name_lbl)
 
         if appt.staff_name:
             staff_lbl = QLabel(appt.staff_name)
-            staff_lbl.setStyleSheet("color:#7f8c8d; font-size:10px; border:none; background:transparent;")
+            staff_lbl.setStyleSheet("color:#7f8c8d; font-size:12px; border:none; background:transparent;")
             vbox.addWidget(staff_lbl)
 
         vbox.addStretch()
