@@ -183,8 +183,8 @@ class _CalendarGrid(QWidget):
         self._appointments:   list             = []
         self._customer_names: dict[int, str]   = {}
         self._cards:          list[_AppointmentCard] = []
-        self.setMinimumHeight(N_SLOTS * SLOT_H)
-        self.setMaximumHeight(N_SLOTS * SLOT_H)
+        self.setMinimumHeight(N_SLOTS * SLOT_H + 1)
+        self.setMaximumHeight(N_SLOTS * SLOT_H + 1)
 
     @property
     def _day_w(self) -> int:
