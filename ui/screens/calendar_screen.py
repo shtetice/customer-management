@@ -1,10 +1,11 @@
 import calendar as _cal
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, time
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QFrame, QSizePolicy, QStackedWidget, QStyle,
+    QLineEdit, QListWidget, QListWidgetItem,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize
+from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize, QTimer
 from PyQt6.QtGui import QFont, QPainter, QColor, QPen, QCursor
 
 from controllers.appointment_controller import appointment_controller
@@ -583,9 +584,14 @@ class CalendarScreen(QWidget):
 
     def __init__(self):
         super().__init__()
-        self._view_mode  = "week"
-        self._week_start = _week_sunday(date.today())
-        self._month_date = date.today().replace(day=1)
+        self._view_mode   = "week"
+        self._week_start  = _week_sunday(date.today())
+        self._month_date  = date.today().replace(day=1)
+        self._search_scope = "all"
+        self._search_timer = QTimer()
+        self._search_timer.setSingleShot(True)
+        self._search_timer.setInterval(300)
+        self._search_timer.timeout.connect(self._run_search)
         self._build_ui()
         self._load_current()
 
@@ -655,6 +661,73 @@ class CalendarScreen(QWidget):
         top.addWidget(btn_add)
 
         layout.addLayout(top)
+
+        # ── Search row ────────────────────────────────────────
+        search_row = QHBoxLayout()
+        search_row.setSpacing(8)
+
+        self._search_input = QLineEdit()
+        self._search_input.setPlaceholderText("חפש תורים לפי שם לקוח או טלפון...")
+        self._search_input.setFixedHeight(34)
+        self._search_input.setStyleSheet("""
+            QLineEdit {
+                border: 1px solid #ccc; border-radius: 5px;
+                padding: 0 10px; font-size: 13px;
+                background: white; color: #2c3e50;
+            }
+            QLineEdit:focus { border-color: #3498db; }
+        """)
+        self._search_input.textChanged.connect(self._on_search_text_changed)
+        search_row.addWidget(self._search_input)
+
+        self._scope_btns: dict[str, QPushButton] = {}
+        for key, label in [("all", "הכל"), ("past", "עבר"), ("future", "עתיד")]:
+            btn = QPushButton(label)
+            btn.setFixedHeight(34)
+            btn.setStyleSheet(_ACTIVE_TOGGLE if key == "all" else _INACTIVE_TOGGLE)
+            btn.clicked.connect(lambda checked=False, k=key: self._set_search_scope(k))
+            search_row.addWidget(btn)
+            self._scope_btns[key] = btn
+
+        layout.addLayout(search_row)
+
+        # ── Search results panel (hidden until a search is active) ──
+        self._search_results_panel = QFrame()
+        self._search_results_panel.setStyleSheet(
+            "QFrame { background: white; border: 1px solid #e0e0e0; border-radius: 8px; }"
+        )
+        results_vbox = QVBoxLayout(self._search_results_panel)
+        results_vbox.setContentsMargins(10, 8, 10, 8)
+        results_vbox.setSpacing(6)
+
+        results_header = QHBoxLayout()
+        self._results_count_lbl = QLabel("")
+        self._results_count_lbl.setStyleSheet("font-size: 12px; color: #888;")
+        results_header.addWidget(self._results_count_lbl)
+        results_header.addStretch()
+        btn_clear_search = QPushButton("✕  נקה חיפוש")
+        btn_clear_search.setFixedHeight(26)
+        btn_clear_search.setStyleSheet(
+            "QPushButton { background: transparent; color: #888; border: none; font-size: 12px; }"
+            "QPushButton:hover { color: #e74c3c; }"
+        )
+        btn_clear_search.clicked.connect(self._clear_search)
+        results_header.addWidget(btn_clear_search)
+        results_vbox.addLayout(results_header)
+
+        self._results_list = QListWidget()
+        self._results_list.setStyleSheet("""
+            QListWidget { border: none; background: white; font-size: 13px; }
+            QListWidget::item { padding: 7px 8px; border-bottom: 1px solid #f0f0f0; }
+            QListWidget::item:selected { background: #dbeeff; color: #2c3e50; }
+            QListWidget::item:hover { background: #f5f9ff; }
+        """)
+        self._results_list.setMaximumHeight(220)
+        self._results_list.itemClicked.connect(self._on_search_result_clicked)
+        results_vbox.addWidget(self._results_list)
+
+        self._search_results_panel.setVisible(False)
+        layout.addWidget(self._search_results_panel)
 
         # ── Content card (header + stacked views) ─────────────
         card = QWidget()
@@ -803,3 +876,84 @@ class CalendarScreen(QWidget):
         dlg = AddAppointmentDialog(appointment_id=appt_id, parent=self)
         dlg.saved.connect(self._load_current)
         dlg.exec()
+
+    # ── Search ────────────────────────────────────────────────
+
+    def _on_search_text_changed(self, text: str):
+        if not text.strip():
+            self._clear_search(clear_input=False)
+            return
+        self._search_timer.start()
+
+    def _set_search_scope(self, scope: str):
+        self._search_scope = scope
+        for key, btn in self._scope_btns.items():
+            btn.setStyleSheet(_ACTIVE_TOGGLE if key == scope else _INACTIVE_TOGGLE)
+        if self._search_input.text().strip():
+            self._run_search()
+
+    def _run_search(self):
+        query = self._search_input.text().strip().lower()
+        if not query:
+            self._clear_search(clear_input=False)
+            return
+
+        all_customers = customer_controller.get_all()
+        matching_ids = [
+            c.id for c in all_customers
+            if query in f"{c.name} {c.surname}".lower()
+            or (c.phone and query in c.phone)
+            or (c.phone2 and query in c.phone2)
+            or (c.phone3 and query in c.phone3)
+        ]
+        if not matching_ids:
+            self._show_results([], {})
+            return
+
+        today_start = datetime(date.today().year, date.today().month, date.today().day)
+        if self._search_scope == "past":
+            start, end = None, today_start
+        elif self._search_scope == "future":
+            start, end = today_start, None
+        else:
+            start, end = None, None
+
+        appts = appointment_controller.get_by_customer_ids_and_range(matching_ids, start, end)
+        names = {c.id: f"{c.name} {c.surname}" for c in all_customers if c.id in set(matching_ids)}
+        self._show_results(appts, names)
+
+    _STATUS_HEB = {
+        AppointmentStatus.SCHEDULED: "מתוכנן",
+        AppointmentStatus.COMPLETED: "הושלם",
+        AppointmentStatus.CANCELLED: "בוטל",
+        AppointmentStatus.NO_SHOW:   "לא הגיע/ה",
+    }
+
+    def _show_results(self, appts: list, customer_names: dict):
+        self._results_list.clear()
+        self._results_count_lbl.setText(f"נמצאו {len(appts)} תורים")
+        for appt in appts:
+            name = customer_names.get(appt.customer_id, "לקוח")
+            status_heb = self._STATUS_HEB.get(appt.status, "")
+            date_str = appt.date.strftime("%d/%m/%Y %H:%M")
+            item = QListWidgetItem(f"{name}  •  {date_str}  •  {status_heb}")
+            item.setData(Qt.ItemDataRole.UserRole,     appt.id)
+            item.setData(Qt.ItemDataRole.UserRole + 1, appt.date.date())
+            self._results_list.addItem(item)
+        self._search_results_panel.setVisible(True)
+
+    def _clear_search(self, clear_input: bool = True):
+        self._search_timer.stop()
+        if clear_input:
+            self._search_input.blockSignals(True)
+            self._search_input.clear()
+            self._search_input.blockSignals(False)
+        self._results_list.clear()
+        self._search_results_panel.setVisible(False)
+
+    def _on_search_result_clicked(self, item: QListWidgetItem):
+        appt_id   = item.data(Qt.ItemDataRole.UserRole)
+        appt_date = item.data(Qt.ItemDataRole.UserRole + 1)
+        self._week_start = _week_sunday(appt_date)
+        self._set_view("week")
+        self._open_edit(appt_id)

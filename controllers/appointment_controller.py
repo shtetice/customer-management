@@ -94,6 +94,26 @@ class AppointmentController:
         finally:
             session.close()
 
+    def get_by_customer_ids_and_range(
+        self,
+        customer_ids: list[int],
+        start: datetime | None,
+        end: datetime | None,
+    ) -> list[Appointment]:
+        session = get_session()
+        try:
+            q = session.query(Appointment).filter(Appointment.customer_id.in_(customer_ids))
+            if start is not None:
+                q = q.filter(Appointment.date >= start)
+            if end is not None:
+                q = q.filter(Appointment.date < end)
+            appts = q.order_by(Appointment.date).all()
+            for a in appts:
+                session.expunge(a)
+            return appts
+        finally:
+            session.close()
+
     def get_by_date_range(self, start: datetime, end: datetime) -> list[Appointment]:
         session = get_session()
         try:
