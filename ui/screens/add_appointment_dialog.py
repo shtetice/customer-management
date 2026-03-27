@@ -277,6 +277,15 @@ class AddAppointmentDialog(QDialog):
             return
         h, m = self.time_combo.currentData()
         appt_dt = datetime(d.year, d.month, d.day, h, m)
+        if appt_dt < datetime.now():
+            reply = QMessageBox.question(
+                self, "תור בעבר",
+                f"התאריך שנבחר ({appt_dt.strftime('%d/%m/%Y %H:%M')}) הוא בעבר.\nהאם להמשיך בשמירה?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
         duration = self.duration_combo.currentData()
         staff = self.staff_input.text().strip()
         notes = self.notes_input.toPlainText().strip()
