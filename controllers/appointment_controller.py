@@ -94,6 +94,21 @@ class AppointmentController:
         finally:
             session.close()
 
+    def get_by_date_range(self, start: datetime, end: datetime) -> list[Appointment]:
+        session = get_session()
+        try:
+            appts = (
+                session.query(Appointment)
+                .filter(Appointment.date >= start, Appointment.date < end)
+                .order_by(Appointment.date)
+                .all()
+            )
+            for a in appts:
+                session.expunge(a)
+            return appts
+        finally:
+            session.close()
+
     def get_pending_reminders(self) -> list[Appointment]:
         """Scheduled appointments within the 24h reminder window not yet notified."""
         now = datetime.utcnow()
