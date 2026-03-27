@@ -313,7 +313,7 @@ class _CalendarGrid(QWidget):
             hour = HOUR_START + i // 2
             y    = i * SLOT_H
             p.drawText(
-                dsw + 4, y - 8, TIME_W - 8, SLOT_H,
+                dsw + 4, y + 2, TIME_W - 8, SLOT_H,
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
                 f"{hour:02d}:00",
             )
