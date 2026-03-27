@@ -488,10 +488,9 @@ class _MonthView(QWidget):
                 cur += timedelta(days=1)
             row_widget = QWidget()
             row_widget.setLayout(week_row)
-            row_widget.setFixedHeight(self._CELL_H)
-            vbox.addWidget(row_widget)
-
-        vbox.addStretch()
+            row_widget.setMinimumHeight(self._CELL_H)
+            row_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            vbox.addWidget(row_widget, 1)  # equal stretch — rows share available height
         self._cells_widget = container
         self._layout.addWidget(container)
 
@@ -501,6 +500,7 @@ class _MonthView(QWidget):
 
         cell = QFrame()
         cell.setFrameShape(QFrame.Shape.Box)
+        cell.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         cell.setStyleSheet(
             "QFrame { border: 1px solid #e0e0e0; background: "
             + ("#fffbf0" if is_today else ("white" if is_cur_month else "#f9f9f9"))
