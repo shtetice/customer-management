@@ -87,11 +87,12 @@ class _AppointmentCard(QFrame):
     clicked    = pyqtSignal(int)
     drag_ended = pyqtSignal(int, int, int)   # appt_id, center_x, center_y (parent coords)
 
-    def __init__(self, appt, customer_name: str, parent=None):
+    def __init__(self, appt, customer_name: str, days_w: int, parent=None):
+        self._days_w = days_w
         super().__init__(parent)
-        self._appt_id    = appt.id
-        self._press_pos  = None   # local coords at press
-        self._dragging   = False
+        self._appt_id   = appt.id
+        self._press_pos = None
+        self._dragging  = False
 
         border_c, bg_c = _STATUS_STYLE.get(appt.status, ("#2980b9", "#dbeeff"))
         self.setStyleSheet(f"""
@@ -148,8 +149,8 @@ class _AppointmentCard(QFrame):
             new_y = pos_in_parent.y() - self._press_pos.y()
             parent = self.parent()
             if parent:
-                new_x = max(0,  min(new_x, DAYS_W - self.width()))
-                new_y = max(0,  min(new_y, parent.height() - self.height()))
+                new_x = max(0, min(new_x, self._days_w - self.width()))
+                new_y = max(0, min(new_y, parent.height() - self.height()))
             self.move(new_x, new_y)
         event.accept()
 
@@ -177,12 +178,25 @@ class _CalendarGrid(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._week_start:    date             = _week_sunday(date.today())
-        self._appointments:  list             = []
-        self._customer_names: dict[int, str]  = {}
-        self._cards:         list[_AppointmentCard] = []
-        self.setFixedWidth(GRID_W)
-        self.setFixedHeight(N_SLOTS * SLOT_H)
+        self._week_start:     date             = _week_sunday(date.today())
+        self._appointments:   list             = []
+        self._customer_names: dict[int, str]   = {}
+        self._cards:          list[_AppointmentCard] = []
+        self.setMinimumHeight(N_SLOTS * SLOT_H)
+        self.setMaximumHeight(N_SLOTS * SLOT_H)
+
+    @property
+    def _day_w(self) -> int:
+        return max(60, (self.width() - TIME_W) // 7)
+
+    @property
+    def _days_w(self) -> int:
+        return self._day_w * 7
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._rebuild_cards()
+        self.update()
 
     def set_week(self, week_start: date, appointments: list, customer_names: dict):
         self._week_start      = week_start
@@ -207,13 +221,14 @@ class _CalendarGrid(QWidget):
                 continue
 
             n_slots = max(1, appt.duration_minutes // 30)
-            x = day_offset * DAY_W + 2
-            y = slot * SLOT_H + 1
-            w = DAY_W - 4
-            h = n_slots * SLOT_H - 2
+            dw = self._day_w
+            x  = day_offset * dw + 2
+            y  = slot * SLOT_H + 1
+            w  = dw - 4
+            h  = n_slots * SLOT_H - 2
 
             name = self._customer_names.get(appt.customer_id, "לקוח")
-            card = _AppointmentCard(appt, name, parent=self)
+            card = _AppointmentCard(appt, name, days_w=self._days_w, parent=self)
             card.setGeometry(x, y, w, h)
             card.clicked.connect(self.appointment_clicked.emit)
             card.drag_ended.connect(self._on_drag_ended)
@@ -222,10 +237,10 @@ class _CalendarGrid(QWidget):
 
     def _on_drag_ended(self, appt_id: int, cx: int, cy: int):
         """Called when a card is dropped. cx/cy are center in grid coords."""
-        if cx < 0 or cx >= DAYS_W:
+        if cx < 0 or cx >= self._days_w:
             self._rebuild_cards()
             return
-        day_idx  = int(cx // DAY_W)
+        day_idx  = int(cx // self._day_w)
         slot_idx = int(cy // SLOT_H)
         if not (0 <= day_idx < 7) or not (0 <= slot_idx < N_SLOTS):
             self._rebuild_cards()
@@ -258,15 +273,18 @@ class _CalendarGrid(QWidget):
         p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
 
         total_h = N_SLOTS * SLOT_H
+        dw      = self._day_w
+        dsw     = self._days_w
+        total_w = self.width()
 
         # Day area background (alternating rows)
         for i in range(N_SLOTS):
             y     = i * SLOT_H
             color = QColor("#f8f9fb") if i % 2 == 0 else QColor("#ffffff")
-            p.fillRect(0, y, DAYS_W, SLOT_H, color)
+            p.fillRect(0, y, dsw, SLOT_H, color)
 
         # Time column background (right side)
-        p.fillRect(DAYS_W, 0, TIME_W, total_h, QColor("#f5f6fa"))
+        p.fillRect(dsw, 0, TIME_W, total_h, QColor("#f5f6fa"))
 
         # Horizontal lines (full width)
         for i in range(N_SLOTS + 1):
@@ -274,29 +292,28 @@ class _CalendarGrid(QWidget):
             pen = QPen(QColor("#d0d0d0") if i % 2 == 0 else QColor("#ebebeb"))
             pen.setWidth(1)
             p.setPen(pen)
-            p.drawLine(0, y, GRID_W, y)
+            p.drawLine(0, y, total_w, y)
 
         # Vertical day separators
         p.setPen(QPen(QColor("#d0d0d0")))
         for d in range(8):
-            x = d * DAY_W
-            p.drawLine(x, 0, x, total_h)
+            p.drawLine(d * dw, 0, d * dw, total_h)
 
         # Time-column left border
         p.setPen(QPen(QColor("#b0b4bc")))
-        p.drawLine(DAYS_W, 0, DAYS_W, total_h)
+        p.drawLine(dsw, 0, dsw, total_h)
 
-        # Time labels — bold, on every hour, left-aligned inside right column
-        p.setPen(QPen(QColor("#5a5f6e")))
+        # Time labels — match day header: 12px, bold, #2c3e50
+        p.setPen(QPen(QColor("#2c3e50")))
         font = p.font()
-        font.setPointSize(9)
+        font.setPixelSize(12)
         font.setBold(True)
         p.setFont(font)
         for i in range(0, N_SLOTS, 2):
             hour = HOUR_START + i // 2
             y    = i * SLOT_H
             p.drawText(
-                DAYS_W + 4, y - 8, TIME_W - 8, SLOT_H,
+                dsw + 4, y - 8, TIME_W - 8, SLOT_H,
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
                 f"{hour:02d}:00",
             )
@@ -308,13 +325,13 @@ class _CalendarGrid(QWidget):
             day_offset      = (now.date() - self._week_start).days
             mins_from_start = (now.hour - HOUR_START) * 60 + now.minute
             y_now           = int(mins_from_start * SLOT_H / 30)
-            x0              = day_offset * DAY_W
+            x0              = day_offset * dw
             pen = QPen(QColor("#e74c3c"))
             pen.setWidth(2)
             p.setPen(pen)
             p.setBrush(QColor("#e74c3c"))
             p.drawEllipse(x0 - 4, y_now - 4, 8, 8)
-            p.drawLine(x0, y_now, x0 + DAY_W, y_now)
+            p.drawLine(x0, y_now, x0 + dw, y_now)
 
     # ── Mouse (clicking empty slots) ──────────────────────────
 
@@ -322,9 +339,9 @@ class _CalendarGrid(QWidget):
         if event.button() != Qt.MouseButton.LeftButton:
             return
         x, y = event.position().x(), event.position().y()
-        if x >= DAYS_W:   # clicked in the time column — ignore
+        if x >= self._days_w:   # clicked in the time column — ignore
             return
-        day_idx  = int(x // DAY_W)
+        day_idx  = int(x // self._day_w)
         slot_idx = int(y // SLOT_H)
         if not (0 <= day_idx < 7) or not (0 <= slot_idx < N_SLOTS):
             return
@@ -593,22 +610,21 @@ class CalendarScreen(QWidget):
         for _ in range(7):
             lbl = QLabel()
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setFixedWidth(DAY_W)
             lbl.setStyleSheet(
                 "font-size: 12px; color: #2c3e50; font-weight: bold; border: none; background: transparent;"
             )
-            wh_row.addWidget(lbl)
+            wh_row.addWidget(lbl, 1)   # stretch=1 → equal width, fills dynamically
             self._day_labels.append(lbl)
 
         time_spacer = QWidget()
         time_spacer.setFixedWidth(TIME_W)
         time_spacer.setStyleSheet("background: #eef2f7; border: none;")
-        wh_row.addWidget(time_spacer)
+        wh_row.addWidget(time_spacer, 0)   # fixed width, no stretch
 
         week_vbox.addWidget(week_header)
 
         scroll = QScrollArea()
-        scroll.setWidgetResizable(False)
+        scroll.setWidgetResizable(True)   # grid fills available width automatically
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
