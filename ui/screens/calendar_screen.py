@@ -616,7 +616,7 @@ class CalendarScreen(QWidget):
         for _ in range(7):
             lbl = QLabel()
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+            lbl.setFixedHeight(self._HEADER_H)
             lbl.setStyleSheet(
                 "font-size: 12px; color: #2c3e50; font-weight: bold; border: none; background: transparent;"
             )
