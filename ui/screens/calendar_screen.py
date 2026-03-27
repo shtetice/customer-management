@@ -224,7 +224,7 @@ class _CalendarGrid(QWidget):
 
             n_slots = max(1, appt.duration_minutes // 30)
             dw = self._day_w
-            x  = day_offset * dw + 2
+            x  = (6 - day_offset) * dw + 2
             y  = slot * SLOT_H + 1
             w  = dw - 4
             h  = n_slots * SLOT_H - 2
@@ -327,7 +327,7 @@ class _CalendarGrid(QWidget):
             day_offset      = (now.date() - self._week_start).days
             mins_from_start = (now.hour - HOUR_START) * 60 + now.minute
             y_now           = int(mins_from_start * SLOT_H / 30)
-            x0              = day_offset * dw
+            x0              = (6 - day_offset) * dw
             pen = QPen(QColor("#e74c3c"))
             pen.setWidth(2)
             p.setPen(pen)
@@ -545,7 +545,7 @@ class _WeekHeader(QWidget):
         p.setFont(font)
 
         for i in range(7):
-            d  = self._week_start + timedelta(days=i)
+            d  = self._week_start + timedelta(days=6 - i)   # שבת at x=0, ראשון at x=6*dw
             x  = i * dw
             is_today = (d == today)
 
@@ -677,6 +677,7 @@ class CalendarScreen(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)   # grid fills available width automatically
+        scroll.setLayoutDirection(Qt.LayoutDirection.LeftToRight)  # keep scrollbar on right, aligns viewport with header
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
