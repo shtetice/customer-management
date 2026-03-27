@@ -557,9 +557,17 @@ class _WeekHeader(QWidget):
 
             day_name = _HEB_DAYS[d.isoweekday() % 7]
             date_str = d.strftime("%d/%m")
-            p.drawText(x, 0, dw, h,
-                       Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
-                       f"{day_name}\n{date_str}")
+            fm       = p.fontMetrics()
+            line_h   = fm.height()
+            gap      = 3
+            block_h  = line_h * 2 + gap
+            y0       = (h - block_h) // 2
+            p.drawText(x, y0,          dw, line_h,
+                       Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+                       day_name)
+            p.drawText(x, y0 + line_h + gap, dw, line_h,
+                       Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+                       date_str)
 
         # Bottom border
         p.setPen(QPen(QColor("#dde1e7")))
