@@ -1,24 +1,42 @@
 import os
+import shutil
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFrame, QFileDialog, QMessageBox, QDialog, QDialogButtonBox
+    QPushButton, QFrame, QFileDialog, QMessageBox, QDialog, QDialogButtonBox,
+    QScrollArea
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QPixmap
 
 from services.settings_service import settings_service
 from services.auth_service import auth_service
+
+_APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_LOGO_DIR = os.path.join(_APP_ROOT, "uploads", "logo")
 
 
 class SettingsScreen(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self._build_ui()
 
     def _build_ui(self):
-        layout = QVBoxLayout(self)
+        # Outer layout holds just the scroll area
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        outer.addWidget(scroll)
+
+        # Inner container is the actual settings content
+        container = QWidget()
+        container.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        scroll.setWidget(container)
+
+        layout = QVBoxLayout(container)
         layout.setContentsMargins(24, 20, 24, 20)
         layout.setSpacing(24)
 
@@ -66,8 +84,65 @@ class SettingsScreen(QWidget):
         sec_layout.addLayout(row)
 
         self._status_label = QLabel("")
-        self._status_label.setStyleSheet("color: #27ae60; font-size: 12px;")
+        self._status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
         sec_layout.addWidget(self._status_label)
+
+        # ── Section: clinic logo ───────────────────────────────
+        logo_section = self._section("לוגו קליניקה לקבלות")
+        layout.addWidget(logo_section)
+        logo_layout = logo_section.layout()
+
+        logo_note = QLabel("הלוגו יופיע בפינה השמאלית-עליונה של כל קבלה שתופק.")
+        logo_note.setStyleSheet("color: #666; font-size: 12px; border: none; background: transparent;")
+        logo_note.setWordWrap(True)
+        logo_layout.addWidget(logo_note)
+
+        logo_row = QHBoxLayout()
+        logo_row.setSpacing(8)
+
+        # Preview box — fixed size, right side in RTL
+        self._logo_preview = QLabel()
+        self._logo_preview.setFixedSize(120, 44)
+        self._logo_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._logo_preview.setStyleSheet(
+            "border: 1px dashed #bbb; border-radius: 4px; background: #fafafa;"
+        )
+        self._logo_preview.setText("אין לוגו")
+        logo_row.addWidget(self._logo_preview)
+
+        logo_row.addStretch()
+
+        btn_pick_logo = QPushButton("בחר תמונה")
+        btn_pick_logo.setFixedHeight(34)
+        btn_pick_logo.setMinimumWidth(110)
+        btn_pick_logo.setStyleSheet("""
+            QPushButton { background: #3498db; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #2980b9; }
+        """)
+        btn_pick_logo.clicked.connect(self._pick_logo)
+        logo_row.addWidget(btn_pick_logo)
+
+        self._btn_clear_logo = QPushButton("הסר לוגו")
+        self._btn_clear_logo.setFixedHeight(34)
+        self._btn_clear_logo.setMinimumWidth(110)
+        self._btn_clear_logo.setStyleSheet("""
+            QPushButton { background: #fdf2f2; color: #e74c3c;
+                          border: 1px solid #f5c6c6; border-radius: 5px;
+                          font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #fce8e8; border-color: #e74c3c; }
+        """)
+        self._btn_clear_logo.clicked.connect(self._clear_logo)
+        logo_row.addWidget(self._btn_clear_logo)
+
+        logo_layout.addLayout(logo_row)
+
+        self._logo_status_label = QLabel("")
+        self._logo_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
+        logo_layout.addWidget(self._logo_status_label)
+
+        # Load existing logo preview
+        self._refresh_logo_preview()
 
         # ── Section: autobackup ────────────────────────────────
         backup_section = self._section("גיבוי אוטומטי")
@@ -159,7 +234,7 @@ class SettingsScreen(QWidget):
         backup_layout.addLayout(pwd_row)
 
         self._backup_status_label = QLabel("")
-        self._backup_status_label.setStyleSheet("color: #27ae60; font-size: 12px;")
+        self._backup_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
         backup_layout.addWidget(self._backup_status_label)
 
         # ── Section: logs ──────────────────────────────────────
@@ -203,10 +278,44 @@ class SettingsScreen(QWidget):
         logs_layout.addLayout(retention_row)
 
         self._logs_status_label = QLabel("")
-        self._logs_status_label.setStyleSheet("color: #27ae60; font-size: 12px;")
+        self._logs_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
         logs_layout.addWidget(self._logs_status_label)
 
         layout.addStretch()
+
+    def _pick_logo(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "בחר תמונת לוגו", "",
+            "Images (*.png *.jpg *.jpeg *.bmp *.gif)"
+        )
+        if not path:
+            return
+        os.makedirs(_LOGO_DIR, exist_ok=True)
+        ext = os.path.splitext(path)[1].lower()
+        dest = os.path.join(_LOGO_DIR, f"clinic_logo{ext}")
+        shutil.copy2(path, dest)
+        settings_service.set("clinic_logo_path", dest)
+        self._refresh_logo_preview()
+        self._logo_status_label.setText("הלוגו נשמר בהצלחה")
+
+    def _clear_logo(self):
+        settings_service.set("clinic_logo_path", "")
+        self._logo_status_label.setText("הלוגו הוסר")
+        self._refresh_logo_preview()
+
+    def _refresh_logo_preview(self):
+        logo_path = settings_service.get("clinic_logo_path", "")
+        if logo_path and os.path.isfile(logo_path):
+            px = QPixmap(logo_path).scaled(
+                120, 44,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self._logo_preview.setPixmap(px)
+            self._logo_preview.setText("")
+        else:
+            self._logo_preview.setPixmap(QPixmap())
+            self._logo_preview.setText("אין לוגו")
 
     def _section(self, title: str) -> QWidget:
         widget = QWidget()

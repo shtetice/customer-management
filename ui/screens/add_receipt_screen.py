@@ -10,6 +10,7 @@ from PyQt6.QtGui import QFont
 from controllers.receipt_controller import receipt_controller
 from controllers.treatment_controller import treatment_controller
 from services.settings_service import settings_service
+from services.pdf_service import generate_receipt_pdf
 from ui.screens.add_customer_screen import _DatePickerButton
 
 FIELD_STYLE = """
@@ -262,26 +263,22 @@ class AddReceiptDialog(QDialog):
                 return
             settings_service.set("receipts_folder", folder)
 
-        filename = f"receipt_{receipt.id}_{receipt_date.strftime('%Y%m%d')}.txt"
+        filename = f"receipt_{receipt.id}_{receipt_date.strftime('%Y%m%d')}.pdf"
         filepath = os.path.join(folder, filename)
 
-        lines = [
-            "=" * 40,
-            "           קבלה",
-            "=" * 40,
-            f"מספר קבלה:  {receipt.id}",
-            f"תאריך:      {receipt_date.strftime('%d/%m/%Y')}",
-        ]
-        if self._customer_name:
-            lines.append(f"לקוח:       {self._customer_name}")
-        lines += [
-            f"סכום:       {amount}",
-        ]
-        if description:
-            lines.append(f"תיאור:      {description}")
-        lines.append("=" * 40)
+        try:
+            pdf_bytes = generate_receipt_pdf(
+                receipt_id=receipt.id,
+                date=receipt_date,
+                customer_name=self._customer_name,
+                amount=amount,
+                description=description,
+            )
+        except RuntimeError as e:
+            QMessageBox.critical(self, "שגיאה ביצירת PDF", str(e))
+            return
 
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
+        with open(filepath, "wb") as f:
+            f.write(pdf_bytes)
 
         QMessageBox.information(self, "הקובץ נשמר", f"הקובץ נשמר בהצלחה:\n{filepath}")

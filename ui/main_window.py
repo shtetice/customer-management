@@ -1,9 +1,11 @@
+import os
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QPushButton, QLabel, QStackedWidget, QSizePolicy, QMessageBox
+    QPushButton, QLabel, QStackedWidget, QSizePolicy, QMessageBox,
+    QGraphicsOpacityEffect
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QPixmap
 
 from ui.screens.customer_list_screen import CustomerListScreen
 from ui.screens.add_customer_screen import AddCustomerScreen
@@ -53,6 +55,23 @@ class MainWindow(QMainWindow):
         self._add_nav_button(sidebar_layout, "logs", "📋  יומן פעילות", "logs.view")
         self._add_nav_button(sidebar_layout, "settings", "⚙️  הגדרות", "settings.view")
         sidebar_layout.addStretch()
+
+        # Clinic logo at bottom of sidebar (50% opacity)
+        logo_path = settings_service.get("clinic_logo_path", "")
+        if logo_path and os.path.isfile(logo_path):
+            logo_label = QLabel()
+            logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            px = QPixmap(logo_path).scaled(
+                160, 70,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            logo_label.setPixmap(px)
+            logo_label.setStyleSheet("background: transparent; border: none; padding: 8px 0;")
+            opacity = QGraphicsOpacityEffect()
+            opacity.setOpacity(0.5)
+            logo_label.setGraphicsEffect(opacity)
+            sidebar_layout.addWidget(logo_label)
 
         # User info + logout at bottom
         user_label = QLabel(f"משתמש: {auth_service.current_user.username}")
