@@ -238,7 +238,7 @@ class _CalendarGrid(QWidget):
             card.show()
             self._cards.append(card)
 
-    def _confirm_move(self, customer_name: str, old_str: str, new_str: str) -> bool:
+    def _confirm_move(self, customer_name: str, old_str: str, new_str: str, new_dt: datetime) -> bool:
         dlg = QDialog(self)
         dlg.setWindowTitle("אישור הזזת תור")
         dlg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
@@ -256,6 +256,14 @@ class _CalendarGrid(QWidget):
         )
         text.setWordWrap(True)
         outer.addWidget(text)
+
+        if new_dt < datetime.now():
+            past_lbl = QLabel("⚠️  התור המוזז הוא בעבר")
+            past_lbl.setStyleSheet(
+                "color: #e74c3c; font-size: 12px; font-weight: bold;"
+            )
+            past_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
+            outer.addWidget(past_lbl)
 
         btn_row = QHBoxLayout()
         btn_row.setSpacing(8)
@@ -306,7 +314,7 @@ class _CalendarGrid(QWidget):
         customer_name = self._customer_names.get(appt.customer_id, "לקוח")
         old_str = appt.date.strftime("%d/%m/%Y %H:%M")
         new_str = new_dt.strftime("%d/%m/%Y %H:%M")
-        confirmed = self._confirm_move(customer_name, old_str, new_str)
+        confirmed = self._confirm_move(customer_name, old_str, new_str, new_dt)
         if not confirmed:
             self._rebuild_cards()
             return
