@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QComboBox, QTextEdit, QMessageBox, QScrollArea, QFrame,
     QDialog, QCalendarWidget, QApplication
 )
-from PyQt6.QtCore import Qt, QDate, QPoint, QTimer, QObject, QEvent, pyqtSignal
+from PyQt6.QtCore import Qt, QDate, QPoint, QTimer, pyqtSignal
 from PyQt6.QtGui import QFont
 
 from database.models import CustomerStatus, Gender
@@ -112,14 +112,18 @@ class _DatePickerButton(QPushButton):
             self._apply_style(False)
 
     def _open_calendar(self):
-        # Prevent re-opening while already open or within 150ms of closing
-        # (click that closed the popup can propagate back to this button on macOS)
+        # Guard against re-opening within 200 ms of closing.
+        # On macOS, clicking outside a Popup propagates the click to the
+        # underlying widget (this button), which would instantly reopen the calendar.
         if getattr(self, '_calendar_open', False):
             return
         self._calendar_open = True
 
+        _state = {"nav_changed": False, "day_clicked": False}
+
         dlg = QDialog(self.window())
         dlg.setWindowFlags(
+            Qt.WindowType.Popup |
             Qt.WindowType.FramelessWindowHint |
             Qt.WindowType.WindowStaysOnTopHint
         )
@@ -136,8 +140,6 @@ class _DatePickerButton(QPushButton):
             if self._date
             else QDate(current_year - 30, 1, 1)
         )
-
-        _state = {"nav_changed": False, "day_clicked": False}
 
         # ── Custom nav bar ──────────────────────────────────────────────
         MONTHS = ["January","February","March","April","May","June",
@@ -215,7 +217,7 @@ class _DatePickerButton(QPushButton):
         """)
         layout.addWidget(cal)
 
-        # ── Sync combos ↔ calendar ───────────────────────────────────────
+        # ── Sync combos ↔ calendar page ──────────────────────────────────
         def update_combos(year, month):
             month_combo.blockSignals(True)
             year_combo.blockSignals(True)
@@ -255,78 +257,7 @@ class _DatePickerButton(QPushButton):
 
         cal.clicked.connect(on_day_clicked)
 
-        # ── Outside-click: close (with partial-nav warning) ─────────────
-        class _OutsideFilter(QObject):
-            def eventFilter(self_f, obj, event):
-                if event.type() != QEvent.Type.MouseButtonPress:
-                    return False
-                if not dlg.isVisible():
-                    return False
-                # Ignore if a Qt popup (e.g. combo dropdown) is currently open
-                if QApplication.activePopupWidget() is not None:
-                    return False
-                try:
-                    gpos = event.globalPosition().toPoint()
-                except AttributeError:
-                    gpos = event.globalPos()
-                if not dlg.geometry().contains(gpos):
-                    _try_close()
-                return False  # never consume — let the click reach its target
-
-        def _try_close():
-            if not dlg.isVisible():
-                return
-            QApplication.instance().removeEventFilter(efilter)
-            if _state["nav_changed"] and not _state["day_clicked"]:
-                warn = QDialog(self.window())
-                warn.setWindowTitle("יציאה ללא בחירת תאריך")
-                warn.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-                warn.setMinimumWidth(300)
-                wl = QVBoxLayout(warn)
-                wl.setContentsMargins(20, 18, 20, 16)
-                wl.setSpacing(14)
-                lbl = QLabel(
-                    "<div dir='rtl' style='font-size:13px;'>"
-                    "ניווטת בלוח השנה אך לא בחרת יום.<br>"
-                    "התאריך <b>לא יישמר</b>. האם להמשיך?"
-                    "</div>"
-                )
-                lbl.setWordWrap(True)
-                wl.addWidget(lbl)
-                br = QHBoxLayout()
-                btn_back = QPushButton("חזור לבחירה")
-                btn_back.setFixedHeight(32)
-                btn_back.setStyleSheet(
-                    "background:#ecf0f1; color:#555; border:1px solid #ccc;"
-                    "border-radius:4px; padding:0 12px;"
-                )
-                btn_exit = QPushButton("סגור בלי לשמור")
-                btn_exit.setFixedHeight(32)
-                btn_exit.setStyleSheet(
-                    "background:#e74c3c; color:white; border:none;"
-                    "border-radius:4px; padding:0 12px;"
-                )
-                btn_back.clicked.connect(warn.reject)
-                btn_exit.clicked.connect(warn.accept)
-                br.addStretch()
-                br.addWidget(btn_back)
-                br.addWidget(btn_exit)
-                wl.addLayout(br)
-                if warn.exec() == QDialog.DialogCode.Rejected:
-                    # Go back — reinstall filter and keep calendar open
-                    QApplication.instance().installEventFilter(efilter)
-                    return
-            dlg.reject()
-
-        efilter = _OutsideFilter(dlg)
-        QApplication.instance().installEventFilter(efilter)
-
-        def on_finished():
-            QApplication.instance().removeEventFilter(efilter)
-            QTimer.singleShot(150, lambda: setattr(self, '_calendar_open', False))
-
-        dlg.finished.connect(on_finished)
-
+        # ── Position and show ────────────────────────────────────────────
         dlg.adjustSize()
         pos = self.mapToGlobal(self.rect().bottomLeft())
         screen = QApplication.primaryScreen().availableGeometry()
@@ -334,7 +265,43 @@ class _DatePickerButton(QPushButton):
         y = min(pos.y(), screen.bottom() - dlg.height())
         dlg.move(QPoint(max(x, screen.left()), max(y, screen.top())))
 
+        # Popup auto-closes when clicking outside; exec() blocks until then.
         dlg.exec()
+
+        # Reset guard after a short delay so the click that closed the popup
+        # (which macOS forwards to the underlying button) is absorbed.
+        QTimer.singleShot(200, lambda: setattr(self, '_calendar_open', False))
+
+        # ── Partial-navigation warning ────────────────────────────────────
+        # The popup is already gone; show the warning as a regular dialog.
+        if _state["nav_changed"] and not _state["day_clicked"]:
+            warn = QDialog(self.window())
+            warn.setWindowTitle("יציאה ללא בחירת תאריך")
+            warn.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+            warn.setMinimumWidth(300)
+            wl = QVBoxLayout(warn)
+            wl.setContentsMargins(20, 18, 20, 16)
+            wl.setSpacing(14)
+            lbl = QLabel(
+                "<div dir='rtl' style='font-size:13px;'>"
+                "ניווטת בלוח השנה אך לא בחרת יום.<br>"
+                "התאריך <b>לא יישמר</b>."
+                "</div>"
+            )
+            lbl.setWordWrap(True)
+            wl.addWidget(lbl)
+            br = QHBoxLayout()
+            btn_ok = QPushButton("הבנתי")
+            btn_ok.setFixedHeight(32)
+            btn_ok.setStyleSheet(
+                "background:#3498db; color:white; border:none;"
+                "border-radius:4px; padding:0 14px;"
+            )
+            btn_ok.clicked.connect(warn.accept)
+            br.addStretch()
+            br.addWidget(btn_ok)
+            wl.addLayout(br)
+            warn.exec()
 
 
 class AddCustomerScreen(QWidget):
