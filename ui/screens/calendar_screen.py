@@ -3,7 +3,7 @@ from datetime import datetime, date, timedelta, time
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QFrame, QSizePolicy, QStackedWidget, QStyle,
-    QLineEdit, QListWidget, QListWidgetItem,
+    QLineEdit, QListWidget, QListWidgetItem, QDialog,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize, QTimer
 from PyQt6.QtGui import QFont, QPainter, QColor, QPen, QCursor
@@ -507,6 +507,196 @@ class _MonthView(QWidget):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Daily summary dialog
+# ─────────────────────────────────────────────────────────────────────────────
+
+_STATUS_HEB_LABELS = {
+    AppointmentStatus.SCHEDULED: ("מתוכנן",  "#2980b9", "#dbeeff"),
+    AppointmentStatus.COMPLETED: ("הושלם",   "#1e8449", "#d5f5e3"),
+    AppointmentStatus.CANCELLED: ("בוטל",    "#7f8c8d", "#eaecee"),
+    AppointmentStatus.NO_SHOW:   ("לא הגיע/ה", "#c0392b", "#fadbd8"),
+}
+
+
+class _DaySummaryDialog(QDialog):
+    def __init__(self, initial_date: date | None = None, parent=None):
+        super().__init__(parent)
+        self._date = initial_date or date.today()
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.setWindowTitle("סיכום יומי")
+        self.setMinimumWidth(520)
+        self.setModal(True)
+        self._build_ui()
+        self._load()
+
+    def _build_ui(self):
+        from ui.screens.add_customer_screen import _DatePickerButton
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(14)
+
+        # ── Header row: title + date picker ──────────────────
+        header = QHBoxLayout()
+        title = QLabel("סיכום יומי")
+        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        title.setStyleSheet("color: #2c3e50;")
+        header.addWidget(title)
+        header.addStretch()
+
+        date_lbl = QLabel("תאריך:")
+        date_lbl.setStyleSheet("font-size: 13px; color: #555;")
+        header.addWidget(date_lbl)
+
+        self._date_picker = _DatePickerButton()
+        self._date_picker.set_date(self._date)
+        self._date_picker.date_changed.connect(self._on_date_changed)
+        self._date_picker.setMinimumWidth(130)
+        header.addWidget(self._date_picker)
+        layout.addLayout(header)
+
+        # ── Stats bar ─────────────────────────────────────────
+        self._stats_row = QHBoxLayout()
+        self._stats_row.setSpacing(8)
+        layout.addLayout(self._stats_row)
+
+        # ── Appointment list ──────────────────────────────────
+        self._list_widget = QWidget()
+        self._list_layout = QVBoxLayout(self._list_widget)
+        self._list_layout.setContentsMargins(0, 0, 0, 0)
+        self._list_layout.setSpacing(6)
+
+        list_scroll = QScrollArea()
+        list_scroll.setWidgetResizable(True)
+        list_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        list_scroll.setWidget(self._list_widget)
+        list_scroll.setMinimumHeight(260)
+        list_scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        layout.addWidget(list_scroll)
+
+        # ── Close button ──────────────────────────────────────
+        btn_close = QPushButton("סגור")
+        btn_close.setFixedHeight(34)
+        btn_close.setStyleSheet(
+            "background:#ecf0f1; color:#555; border:1px solid #ccc;"
+            "border-radius:4px; padding:0 16px; font-size:13px;"
+        )
+        btn_close.clicked.connect(self.accept)
+        row = QHBoxLayout()
+        row.addStretch()
+        row.addWidget(btn_close)
+        layout.addLayout(row)
+
+    def _on_date_changed(self, d):
+        if d:
+            self._date = d
+            self._load()
+
+    def _load(self):
+        start_dt = datetime(self._date.year, self._date.month, self._date.day)
+        end_dt   = start_dt + timedelta(days=1)
+        appts = appointment_controller.get_by_date_range(start_dt, end_dt)
+
+        # Fetch customer names
+        names: dict[int, str] = {}
+        for cid in {a.customer_id for a in appts}:
+            c = customer_controller.get_by_id(cid)
+            if c:
+                names[cid] = f"{c.name} {c.surname}"
+
+        self._rebuild_stats(appts)
+        self._rebuild_list(appts, names)
+
+    def _rebuild_stats(self, appts: list):
+        # Clear existing stat widgets
+        while self._stats_row.count():
+            item = self._stats_row.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        counts = {s: 0 for s in AppointmentStatus}
+        for a in appts:
+            counts[a.status] = counts.get(a.status, 0) + 1
+
+        # Total chip
+        self._stats_row.addWidget(self._stat_chip(f"סה\"כ: {len(appts)}", "#2c3e50", "#eef2f7"))
+        for status, (label, fg, bg) in _STATUS_HEB_LABELS.items():
+            if counts[status]:
+                self._stats_row.addWidget(
+                    self._stat_chip(f"{label}: {counts[status]}", fg, bg)
+                )
+        self._stats_row.addStretch()
+
+    def _stat_chip(self, text: str, fg: str, bg: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setStyleSheet(
+            f"background:{bg}; color:{fg}; border:1px solid {fg};"
+            f"border-radius:4px; font-size:12px; padding:3px 8px;"
+        )
+        return lbl
+
+    def _rebuild_list(self, appts: list, names: dict):
+        # Clear existing rows
+        while self._list_layout.count():
+            item = self._list_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if not appts:
+            empty = QLabel("אין תורים ביום זה")
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty.setStyleSheet("color: #aaa; font-size: 14px; padding: 30px;")
+            self._list_layout.addWidget(empty)
+            return
+
+        for appt in appts:
+            label, fg, bg = _STATUS_HEB_LABELS.get(appt.status, ("", "#2c3e50", "#eef2f7"))
+            name = names.get(appt.customer_id, "לקוח")
+            row = QFrame()
+            row.setStyleSheet(
+                f"QFrame {{ background:{bg}; border:1px solid {fg};"
+                f"border-radius:6px; }}"
+            )
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(12, 8, 12, 8)
+            row_layout.setSpacing(12)
+
+            time_lbl = QLabel(appt.date.strftime("%H:%M"))
+            time_lbl.setStyleSheet(
+                f"font-size:14px; font-weight:bold; color:{fg}; border:none; background:transparent;"
+            )
+            time_lbl.setFixedWidth(44)
+            row_layout.addWidget(time_lbl)
+
+            info = QVBoxLayout()
+            info.setSpacing(2)
+            name_lbl = QLabel(name)
+            name_lbl.setStyleSheet("font-size:13px; color:#2c3e50; border:none; background:transparent;")
+            info.addWidget(name_lbl)
+            details = []
+            if appt.duration_minutes:
+                details.append(f"{appt.duration_minutes} דק׳")
+            if appt.staff_name:
+                details.append(appt.staff_name)
+            if details:
+                det_lbl = QLabel("  •  ".join(details))
+                det_lbl.setStyleSheet("font-size:11px; color:#7f8c8d; border:none; background:transparent;")
+                info.addWidget(det_lbl)
+            row_layout.addLayout(info)
+
+            row_layout.addStretch()
+
+            status_lbl = QLabel(label)
+            status_lbl.setStyleSheet(
+                f"font-size:11px; color:{fg}; border:none; background:transparent;"
+            )
+            row_layout.addWidget(status_lbl)
+
+            self._list_layout.addWidget(row)
+
+        self._list_layout.addStretch()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Week-view day header (custom paint — immune to RTL layout quirks)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -653,6 +843,12 @@ class CalendarScreen(QWidget):
         btn_today.setStyleSheet(_SOFT_BTN)
         btn_today.clicked.connect(self._go_today)
         top.addWidget(btn_today)
+
+        btn_summary = QPushButton("📋  סיכום יומי")
+        btn_summary.setFixedHeight(34)
+        btn_summary.setStyleSheet(_SOFT_BTN)
+        btn_summary.clicked.connect(self._open_day_summary)
+        top.addWidget(btn_summary)
 
         btn_add = QPushButton("＋ תור חדש")
         btn_add.setFixedHeight(34)
@@ -866,6 +1062,18 @@ class CalendarScreen(QWidget):
 
     # ── Dialogs ───────────────────────────────────────────────
 
+    def _open_day_summary(self):
+        # Default to the first day of the currently visible week/month in week view,
+        # or today if today falls in the visible range.
+        today = date.today()
+        if self._view_mode == "week":
+            week_end = self._week_start + timedelta(days=6)
+            initial = today if self._week_start <= today <= week_end else self._week_start
+        else:
+            initial = today if today.month == self._month_date.month else self._month_date
+        dlg = _DaySummaryDialog(initial_date=initial, parent=self)
+        dlg.exec()
+
     def _open_add(self, prefill_dt: datetime | None):
         from ui.screens.add_appointment_dialog import AddAppointmentDialog
         dlg = AddAppointmentDialog(prefill_dt=prefill_dt, parent=self)
@@ -924,19 +1132,12 @@ class CalendarScreen(QWidget):
         names = {c.id: f"{c.name} {c.surname}" for c in all_customers}
         self._show_results(appts, names)
 
-    _STATUS_HEB = {
-        AppointmentStatus.SCHEDULED: "מתוכנן",
-        AppointmentStatus.COMPLETED: "הושלם",
-        AppointmentStatus.CANCELLED: "בוטל",
-        AppointmentStatus.NO_SHOW:   "לא הגיע/ה",
-    }
-
     def _show_results(self, appts: list, customer_names: dict):
         self._results_list.clear()
         self._results_count_lbl.setText(f"נמצאו {len(appts)} תורים")
         for appt in appts:
             name = customer_names.get(appt.customer_id, "לקוח")
-            status_heb = self._STATUS_HEB.get(appt.status, "")
+            status_heb = _STATUS_HEB_LABELS.get(appt.status, ("", "", ""))[0]
             date_str = appt.date.strftime("%d/%m/%Y %H:%M")
             item = QListWidgetItem(f"{name}  •  {date_str}  •  {status_heb}")
             item.setData(Qt.ItemDataRole.UserRole,     appt.id)
