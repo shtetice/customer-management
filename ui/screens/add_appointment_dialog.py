@@ -91,7 +91,11 @@ class AddAppointmentDialog(QDialog):
 
         # ── Date ─────────────────────────────────────────────
         layout.addWidget(self._lbl("תאריך *"))
-        self.date_picker = _DatePickerButton()
+        # New appointments: only allow today or future dates in the picker.
+        # Edit appointments: no restriction (past date may need to be kept/corrected).
+        self.date_picker = _DatePickerButton(
+            min_date=date.today() if not self._appointment_id else None
+        )
         if self._prefill_dt:
             self.date_picker.set_date(self._prefill_dt.date())
         else:
@@ -278,14 +282,23 @@ class AddAppointmentDialog(QDialog):
         h, m = self.time_combo.currentData()
         appt_dt = datetime(d.year, d.month, d.day, h, m)
         if appt_dt < datetime.now():
-            reply = QMessageBox.question(
-                self, "תור בעבר",
-                f"התאריך שנבחר ({appt_dt.strftime('%d/%m/%Y %H:%M')}) הוא בעבר.\nהאם להמשיך בשמירה?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if reply != QMessageBox.StandardButton.Yes:
+            if not self._appointment_id:
+                self.error_label.setText(
+                    f"לא ניתן לקבוע תור בעבר ({appt_dt.strftime('%d/%m/%Y %H:%M')})"
+                )
                 return
+            else:
+                msg = QMessageBox(self)
+                msg.setWindowTitle("תור בעבר")
+                msg.setText(
+                    f"התאריך שנבחר ({appt_dt.strftime('%d/%m/%Y %H:%M')}) הוא בעבר.\n"
+                    "האם להמשיך בשמירה?"
+                )
+                msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                msg.setDefaultButton(QMessageBox.StandardButton.No)
+                msg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+                if msg.exec() != QMessageBox.StandardButton.Yes:
+                    return
         duration = self.duration_combo.currentData()
         staff = self.staff_input.text().strip()
         notes = self.notes_input.toPlainText().strip()

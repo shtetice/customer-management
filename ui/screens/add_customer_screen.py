@@ -76,9 +76,11 @@ class _DatePickerButton(QPushButton):
     """Button that opens a LTR calendar popup and emits date_changed."""
     date_changed = pyqtSignal(object)   # date | None
 
-    def __init__(self, parent=None):
+    def __init__(self, min_date=None, max_date=None, parent=None):
         super().__init__("לא צוין", parent)
         self._date = None
+        self._min_date = min_date  # date | None
+        self._max_date = max_date  # date | None
         self.setMinimumHeight(36)
         self._apply_style(False)
         self.clicked.connect(self._open_calendar)
@@ -135,11 +137,12 @@ class _DatePickerButton(QPushButton):
         layout.setSpacing(0)
 
         current_year = QDate.currentDate().year()
-        default = (
-            QDate(self._date.year, self._date.month, self._date.day)
-            if self._date
-            else QDate(current_year - 30, 1, 1)
-        )
+        if self._date:
+            default = QDate(self._date.year, self._date.month, self._date.day)
+        elif self._min_date:
+            default = QDate(self._min_date.year, self._min_date.month, self._min_date.day)
+        else:
+            default = QDate(current_year - 30, 1, 1)
 
         # ── Custom nav bar ──────────────────────────────────────────────
         MONTHS = ["January","February","March","April","May","June",
@@ -204,8 +207,10 @@ class _DatePickerButton(QPushButton):
         cal.setGridVisible(False)
         cal.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         cal.setNavigationBarVisible(False)
-        cal.setMinimumDate(QDate(1920, 1, 1))
-        cal.setMaximumDate(QDate.currentDate())
+        min_qdate = QDate(self._min_date.year, self._min_date.month, self._min_date.day) if self._min_date else QDate(1920, 1, 1)
+        max_qdate = QDate(self._max_date.year, self._max_date.month, self._max_date.day) if self._max_date else QDate(2100, 12, 31)
+        cal.setMinimumDate(min_qdate)
+        cal.setMaximumDate(max_qdate)
         cal.setSelectedDate(default)
         cal.setStyleSheet("""
             QCalendarWidget QWidget { font-size: 13px; }
