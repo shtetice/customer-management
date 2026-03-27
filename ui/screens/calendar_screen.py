@@ -679,7 +679,7 @@ class CalendarScreen(QWidget):
         scroll.setWidgetResizable(True)   # grid fills available width automatically
         scroll.setLayoutDirection(Qt.LayoutDirection.LeftToRight)  # keep scrollbar on right, aligns viewport with header
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setStyleSheet("QScrollArea { border: none; background: white; }")
 
