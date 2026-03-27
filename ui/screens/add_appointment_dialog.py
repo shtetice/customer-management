@@ -299,6 +299,44 @@ class AddAppointmentDialog(QDialog):
                 msg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
                 if msg.exec() != QMessageBox.StandardButton.Yes:
                     return
+        if appt_dt.isoweekday() == 6:   # Saturday
+            dlg = QDialog(self)
+            dlg.setWindowTitle("תור בשבת")
+            dlg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+            dlg.setMinimumWidth(300)
+            vl = QVBoxLayout(dlg)
+            vl.setContentsMargins(20, 18, 20, 16)
+            vl.setSpacing(14)
+            lbl = QLabel(
+                f"<div dir='rtl' style='font-size:13px;'>"
+                f"התאריך שנבחר ({appt_dt.strftime('%d/%m/%Y')}) חל ב<b>שבת</b>.<br>"
+                f"האם להמשיך בשמירה?"
+                f"</div>"
+            )
+            lbl.setWordWrap(True)
+            vl.addWidget(lbl)
+            br = QHBoxLayout()
+            btn_no = QPushButton("ביטול")
+            btn_no.setFixedHeight(32)
+            btn_no.setStyleSheet(
+                "background:#ecf0f1; color:#555; border:1px solid #ccc;"
+                "border-radius:4px; padding:0 14px;"
+            )
+            btn_yes = QPushButton("אישור")
+            btn_yes.setFixedHeight(32)
+            btn_yes.setStyleSheet(
+                "background:#3498db; color:white; border:none;"
+                "border-radius:4px; padding:0 14px;"
+            )
+            btn_no.clicked.connect(dlg.reject)
+            btn_yes.clicked.connect(dlg.accept)
+            br.addStretch()
+            br.addWidget(btn_no)
+            br.addWidget(btn_yes)
+            vl.addLayout(br)
+            if dlg.exec() != QDialog.DialogCode.Accepted:
+                return
+
         duration = self.duration_combo.currentData()
         staff = self.staff_input.text().strip()
         notes = self.notes_input.toPlainText().strip()
