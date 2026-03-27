@@ -242,7 +242,7 @@ class _CalendarGrid(QWidget):
         if cx < 0 or cx >= self._days_w:
             self._rebuild_cards()
             return
-        day_idx  = int(cx // self._day_w)
+        day_idx  = 6 - int(cx // self._day_w)
         slot_idx = int(cy // SLOT_H)
         if not (0 <= day_idx < 7) or not (0 <= slot_idx < N_SLOTS):
             self._rebuild_cards()
@@ -343,7 +343,7 @@ class _CalendarGrid(QWidget):
         x, y = event.position().x(), event.position().y()
         if x >= self._days_w:   # clicked in the time column — ignore
             return
-        day_idx  = int(x // self._day_w)
+        day_idx  = 6 - int(x // self._day_w)
         slot_idx = int(y // SLOT_H)
         if not (0 <= day_idx < 7) or not (0 <= slot_idx < N_SLOTS):
             return
