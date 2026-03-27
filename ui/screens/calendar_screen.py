@@ -902,13 +902,13 @@ class CalendarScreen(QWidget):
         matching_ids = [
             c.id for c in all_customers
             if query in f"{c.name} {c.surname}".lower()
-            or (c.phone and query in c.phone)
+            or (c.phone  and query in c.phone)
             or (c.phone2 and query in c.phone2)
             or (c.phone3 and query in c.phone3)
+            or (c.email   and query in c.email.lower())
+            or (c.address and query in c.address.lower())
+            or (c.notes   and query in c.notes.lower())
         ]
-        if not matching_ids:
-            self._show_results([], {})
-            return
 
         today_start = datetime(date.today().year, date.today().month, date.today().day)
         if self._search_scope == "past":
@@ -918,8 +918,9 @@ class CalendarScreen(QWidget):
         else:
             start, end = None, None
 
-        appts = appointment_controller.get_by_customer_ids_and_range(matching_ids, start, end)
-        names = {c.id: f"{c.name} {c.surname}" for c in all_customers if c.id in set(matching_ids)}
+        # search_appointments matches customer_ids OR appointment staff_name/notes
+        appts = appointment_controller.search_appointments(matching_ids, query, start, end)
+        names = {c.id: f"{c.name} {c.surname}" for c in all_customers}
         self._show_results(appts, names)
 
     _STATUS_HEB = {

@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from sqlalchemy import or_
 from database.db import get_session
 from database.models import Appointment, AppointmentStatus
 
@@ -91,6 +92,35 @@ class AppointmentController:
                 raise ValueError(f"תור עם מזהה {appt_id} לא נמצא")
             session.delete(a)
             session.commit()
+        finally:
+            session.close()
+
+    def search_appointments(
+        self,
+        customer_ids: list[int],
+        text_query: str,
+        start: datetime | None,
+        end: datetime | None,
+    ) -> list[Appointment]:
+        """Return appointments whose customer is in customer_ids OR whose staff_name/notes
+        contain text_query, filtered by the optional date range."""
+        session = get_session()
+        try:
+            like = f"%{text_query}%"
+            conditions = []
+            if customer_ids:
+                conditions.append(Appointment.customer_id.in_(customer_ids))
+            conditions.append(Appointment.staff_name.ilike(like))
+            conditions.append(Appointment.notes.ilike(like))
+            q = session.query(Appointment).filter(or_(*conditions))
+            if start is not None:
+                q = q.filter(Appointment.date >= start)
+            if end is not None:
+                q = q.filter(Appointment.date < end)
+            appts = q.order_by(Appointment.date).all()
+            for a in appts:
+                session.expunge(a)
+            return appts
         finally:
             session.close()
 
