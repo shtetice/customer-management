@@ -677,6 +677,7 @@ class CalendarScreen(QWidget):
             }
             QLineEdit:focus { border-color: #3498db; }
         """)
+        self._search_input.setClearButtonEnabled(True)
         self._search_input.textChanged.connect(self._on_search_text_changed)
         search_row.addWidget(self._search_input)
 
