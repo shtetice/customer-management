@@ -506,6 +506,67 @@ class _MonthView(QWidget):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Week-view day header (custom paint — immune to RTL layout quirks)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class _WeekHeader(QWidget):
+    """Draws day-name / date labels centred in each column via QPainter."""
+
+    def __init__(self, header_h: int, parent=None):
+        super().__init__(parent)
+        self._header_h   = header_h
+        self._day_w      = DAY_W
+        self._week_start = _week_sunday(date.today())
+        self.setFixedHeight(header_h)
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
+
+    def set_week(self, week_start: date):
+        self._week_start = week_start
+        self.update()
+
+    def set_day_width(self, day_w: int):
+        self._day_w = day_w
+        self.update()
+
+    def paintEvent(self, event):
+        p   = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        today = date.today()
+        dw    = self._day_w
+        h     = self._header_h
+        total_w = dw * 7 + TIME_W
+
+        # Background
+        p.fillRect(0, 0, total_w, h, QColor("#eef2f7"))
+
+        font = p.font()
+        font.setPixelSize(12)
+        font.setBold(True)
+        p.setFont(font)
+
+        for i in range(7):
+            d  = self._week_start + timedelta(days=i)
+            x  = i * dw
+            is_today = (d == today)
+
+            if is_today:
+                p.fillRect(x, 0, dw, h, QColor("#dbeeff"))
+                p.setPen(QPen(QColor("#2980b9")))
+            else:
+                p.setPen(QPen(QColor("#2c3e50")))
+
+            day_name = _HEB_DAYS[d.isoweekday() % 7]
+            date_str = d.strftime("%d/%m")
+            p.drawText(x, 0, dw, h,
+                       Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
+                       f"{day_name}\n{date_str}")
+
+        # Bottom border
+        p.setPen(QPen(QColor("#dde1e7")))
+        p.drawLine(0, h - 1, total_w, h - 1)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Main calendar screen
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -603,32 +664,8 @@ class CalendarScreen(QWidget):
         week_vbox.setContentsMargins(0, 0, 0, 0)
         week_vbox.setSpacing(0)
 
-        week_header = QWidget()
-        week_header.setFixedHeight(self._HEADER_H)
-        week_header.setStyleSheet(
-            "QWidget { background: #eef2f7; border-bottom: 1px solid #dde1e7; border-radius: 0; }"
-        )
-        wh_row = QHBoxLayout(week_header)
-        wh_row.setContentsMargins(0, 0, 0, 0)
-        wh_row.setSpacing(0)
-
-        self._day_labels: list[QLabel] = []
-        for _ in range(7):
-            lbl = QLabel()
-            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setStyleSheet(
-                "font-size: 12px; color: #2c3e50; font-weight: bold; border: none; background: transparent;"
-                " padding-top: 10px; padding-bottom: 10px;"
-            )
-            wh_row.addWidget(lbl, 1)
-            self._day_labels.append(lbl)
-
-        time_spacer = QWidget()
-        time_spacer.setFixedWidth(TIME_W)
-        time_spacer.setStyleSheet("background: #eef2f7; border: none;")
-        wh_row.addWidget(time_spacer, 0)   # fixed width, no stretch
-
-        week_vbox.addWidget(week_header)
+        self._week_header = _WeekHeader(self._HEADER_H)
+        week_vbox.addWidget(self._week_header)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)   # grid fills available width automatically
@@ -641,7 +678,7 @@ class CalendarScreen(QWidget):
         self._grid.slot_clicked.connect(self._open_add)
         self._grid.appointment_clicked.connect(self._open_edit)
         self._grid.appointment_dropped.connect(self._load_current)
-        self._grid.day_width_changed.connect(self._sync_header_widths)
+        self._grid.day_width_changed.connect(self._week_header.set_day_width)
         scroll.setWidget(self._grid)
 
         week_vbox.addWidget(scroll)
@@ -741,27 +778,8 @@ class CalendarScreen(QWidget):
                 names[cid] = f"{c.name} {c.surname}"
         return names
 
-    def _sync_header_widths(self, day_w: int):
-        for lbl in self._day_labels:
-            lbl.setFixedWidth(day_w)
-
     def _update_day_headers(self):
-        today = date.today()
-        for i, lbl in enumerate(self._day_labels):
-            d = self._week_start + timedelta(days=i)
-            lbl.setText(f"{_HEB_DAYS[d.isoweekday() % 7]}\n{d.strftime('%d/%m')}")
-            if d == today:
-                lbl.setStyleSheet(
-                    "font-size: 12px; color: #2980b9; font-weight: bold; "
-                    "border: none; background: #dbeeff; border-radius: 0;"
-                    " padding-top: 10px; padding-bottom: 10px;"
-                )
-            else:
-                lbl.setStyleSheet(
-                    "font-size: 12px; color: #2c3e50; font-weight: bold; "
-                    "border: none; background: transparent;"
-                    " padding-top: 10px; padding-bottom: 10px;"
-                )
+        self._week_header.set_week(self._week_start)
 
     # ── Dialogs ───────────────────────────────────────────────
 
