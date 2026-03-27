@@ -616,9 +616,9 @@ class CalendarScreen(QWidget):
         for _ in range(7):
             lbl = QLabel()
             lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            lbl.setFixedHeight(self._HEADER_H)
             lbl.setStyleSheet(
                 "font-size: 12px; color: #2c3e50; font-weight: bold; border: none; background: transparent;"
+                " padding-top: 10px; padding-bottom: 10px;"
             )
             wh_row.addWidget(lbl, 1)
             self._day_labels.append(lbl)
@@ -754,11 +754,13 @@ class CalendarScreen(QWidget):
                 lbl.setStyleSheet(
                     "font-size: 12px; color: #2980b9; font-weight: bold; "
                     "border: none; background: #dbeeff; border-radius: 0;"
+                    " padding-top: 10px; padding-bottom: 10px;"
                 )
             else:
                 lbl.setStyleSheet(
                     "font-size: 12px; color: #2c3e50; font-weight: bold; "
                     "border: none; background: transparent;"
+                    " padding-top: 10px; padding-bottom: 10px;"
                 )
 
     # ── Dialogs ───────────────────────────────────────────────
