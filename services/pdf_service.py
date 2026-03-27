@@ -5,17 +5,31 @@ from datetime import datetime
 
 from fpdf import FPDF
 from bidi.algorithm import get_display
+from PIL import Image as _PILImage
 
 from services.settings_service import settings_service
 
 _APP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-_LOGO_MAX_W = 50   # mm
-_LOGO_MAX_H = 22   # mm
+_LOGO_MAX_W = 60   # mm — max logo width
+_LOGO_MAX_H = 45   # mm — max logo height
 _LABEL_W = 52      # mm  — right column (Hebrew label)
 _ROW_H = 8         # mm
 
 _HEB_RE = re.compile(r'[\u0590-\u05FF]')
+
+
+def _logo_size(path: str) -> tuple[float, float]:
+    """Return (w_mm, h_mm) scaled to fit within _LOGO_MAX_W × _LOGO_MAX_H, preserving aspect ratio."""
+    try:
+        with _PILImage.open(path) as img:
+            px_w, px_h = img.size
+        if px_w == 0 or px_h == 0:
+            return _LOGO_MAX_W, _LOGO_MAX_H
+        scale = min(_LOGO_MAX_W / px_w, _LOGO_MAX_H / px_h)
+        return px_w * scale, px_h * scale
+    except Exception:
+        return _LOGO_MAX_W, _LOGO_MAX_H
 
 
 def _find_font() -> str | None:
@@ -81,8 +95,9 @@ def generate_receipt_pdf(
     logo_bottom_y = pdf.t_margin
 
     if logo_path and os.path.isfile(logo_path):
-        pdf.image(logo_path, x=pdf.l_margin, y=pdf.t_margin, w=_LOGO_MAX_W)
-        logo_bottom_y = pdf.t_margin + _LOGO_MAX_H
+        logo_w, logo_h = _logo_size(logo_path)
+        pdf.image(logo_path, x=pdf.l_margin, y=pdf.t_margin, w=logo_w, h=logo_h)
+        logo_bottom_y = pdf.t_margin + logo_h
 
     pdf.set_y(max(logo_bottom_y, pdf.t_margin) + 4)
 

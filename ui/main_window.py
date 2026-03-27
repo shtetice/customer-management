@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QGraphicsOpacityEffect
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QPixmap
+from PyQt6.QtGui import QFont, QPixmap, QPainter, QPainterPath
 
 from ui.screens.customer_list_screen import CustomerListScreen
 from ui.screens.add_customer_screen import AddCustomerScreen
@@ -63,12 +63,26 @@ class MainWindow(QMainWindow):
         if logo_path and os.path.isfile(logo_path):
             logo_label = QLabel()
             logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            px = QPixmap(logo_path).scaled(
-                160, 70,
+            size = 140
+            src = QPixmap(logo_path).scaled(
+                size, size,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
-            logo_label.setPixmap(px)
+            bg_color = src.toImage().pixelColor(0, 0)
+            circle = QPixmap(size, size)
+            circle.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(circle)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            path = QPainterPath()
+            path.addEllipse(0, 0, size, size)
+            painter.setClipPath(path)
+            painter.fillPath(path, bg_color)
+            x_off = (size - src.width()) // 2
+            y_off = (size - src.height()) // 2
+            painter.drawPixmap(x_off, y_off, src)
+            painter.end()
+            logo_label.setPixmap(circle)
             logo_label.setStyleSheet("background: transparent; border: none; padding: 8px 0;")
             opacity = QGraphicsOpacityEffect()
             opacity.setOpacity(0.5)
