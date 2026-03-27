@@ -69,25 +69,26 @@ class MainWindow(QMainWindow):
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
-            bg_color = src.toImage().pixelColor(0, 0)
-            circle = QPixmap(size, size)
-            circle.fill(Qt.GlobalColor.transparent)
-            painter = QPainter(circle)
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-            path = QPainterPath()
-            path.addEllipse(0, 0, size, size)
-            painter.setClipPath(path)
-            painter.fillPath(path, bg_color)
-            x_off = (size - src.width()) // 2
-            y_off = (size - src.height()) // 2
-            painter.drawPixmap(x_off, y_off, src)
-            painter.end()
-            logo_label.setPixmap(circle)
-            logo_label.setStyleSheet("background: transparent; border: none; padding: 8px 0;")
-            opacity = QGraphicsOpacityEffect()
-            opacity.setOpacity(0.5)
-            logo_label.setGraphicsEffect(opacity)
-            sidebar_layout.addWidget(logo_label)
+            if not src.isNull():
+                bg_color = src.toImage().pixelColor(0, 0)
+                circle = QPixmap(size, size)
+                circle.fill(Qt.GlobalColor.transparent)
+                painter = QPainter(circle)
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+                path = QPainterPath()
+                path.addEllipse(0, 0, size, size)
+                painter.setClipPath(path)
+                painter.fillPath(path, bg_color)
+                x_off = (size - src.width()) // 2
+                y_off = (size - src.height()) // 2
+                painter.drawPixmap(x_off, y_off, src)
+                painter.end()
+                logo_label.setPixmap(circle)
+                logo_label.setStyleSheet("background: transparent; border: none; padding: 8px 0;")
+                opacity = QGraphicsOpacityEffect()
+                opacity.setOpacity(0.5)
+                logo_label.setGraphicsEffect(opacity)
+                sidebar_layout.addWidget(logo_label)
 
         # User info + logout at bottom
         user_label = QLabel(f"משתמש: {auth_service.current_user.username}")
