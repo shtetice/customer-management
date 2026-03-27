@@ -3,7 +3,7 @@ from datetime import datetime, date, timedelta, time
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QFrame, QSizePolicy, QStackedWidget, QStyle,
-    QLineEdit, QListWidget, QListWidgetItem, QDialog,
+    QLineEdit, QListWidget, QListWidgetItem, QDialog, QMessageBox,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize, QTimer
 from PyQt6.QtGui import QFont, QPainter, QColor, QPen, QCursor
@@ -258,6 +258,26 @@ class _CalendarGrid(QWidget):
         new_hour   = HOUR_START + slot_idx // 2
         new_minute = 30 if slot_idx % 2 else 0
         new_dt     = datetime(new_date.year, new_date.month, new_date.day, new_hour, new_minute)
+
+        if new_dt == appt.date:
+            self._rebuild_cards()
+            return
+
+        customer_name = self._customer_names.get(appt.customer_id, "לקוח")
+        old_str = appt.date.strftime("%d/%m/%Y %H:%M")
+        new_str = new_dt.strftime("%d/%m/%Y %H:%M")
+        reply = QMessageBox.question(
+            self,
+            "אישור הזזת תור",
+            f"להזיז את התור של {customer_name}?\n\n"
+            f"מ:  {old_str}\n"
+            f"אל:  {new_str}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            self._rebuild_cards()
+            return
 
         try:
             appointment_controller.update(
