@@ -619,7 +619,7 @@ class CalendarScreen(QWidget):
             lbl.setStyleSheet(
                 "font-size: 12px; color: #2c3e50; font-weight: bold; border: none; background: transparent;"
             )
-            wh_row.addWidget(lbl)
+            wh_row.addWidget(lbl, 1)
             self._day_labels.append(lbl)
 
         time_spacer = QWidget()
