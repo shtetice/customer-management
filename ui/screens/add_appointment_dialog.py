@@ -120,11 +120,11 @@ class AddAppointmentDialog(QDialog):
         self.duration_combo.setMinimumHeight(36)
         self.duration_combo.setStyleSheet(FIELD_STYLE)
         for label, val in [
-            ("30 דקות", 30), ("45 דקות", 45), ("60 דקות", 60),
+            ("15 דקות", 15), ("30 דקות", 30), ("45 דקות", 45), ("60 דקות", 60),
             ("90 דקות", 90), ("120 דקות", 120),
         ]:
             self.duration_combo.addItem(label, val)
-        self.duration_combo.setCurrentIndex(2)  # default 60 min
+        self.duration_combo.setCurrentIndex(3)  # default 60 min
         layout.addWidget(self.duration_combo)
 
         # ── Staff ─────────────────────────────────────────────
