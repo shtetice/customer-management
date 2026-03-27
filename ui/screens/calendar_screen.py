@@ -258,7 +258,7 @@ class _CalendarGrid(QWidget):
         outer.addWidget(text)
 
         if new_dt < datetime.now():
-            past_lbl = QLabel("⚠️  התור המוזז הוא בעבר")
+            past_lbl = QLabel("⚠️  התור הוזז לתאריך שכבר עבר")
             past_lbl.setStyleSheet(
                 "color: #e74c3c; font-size: 12px; font-weight: bold;"
             )
