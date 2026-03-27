@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QComboBox, QTextEdit, QMessageBox, QScrollArea, QFrame,
     QDialog, QCalendarWidget, QApplication
 )
-from PyQt6.QtCore import Qt, QDate, QPoint, pyqtSignal
+from PyQt6.QtCore import Qt, QDate, QPoint, QTimer, QObject, QEvent, pyqtSignal
 from PyQt6.QtGui import QFont
 
 from database.models import CustomerStatus, Gender
@@ -112,8 +112,16 @@ class _DatePickerButton(QPushButton):
             self._apply_style(False)
 
     def _open_calendar(self):
+        # Prevent reopening if already open (e.g. click propagation after close)
+        if getattr(self, '_calendar_open', False):
+            return
+        self._calendar_open = True
+
         dlg = QDialog(self.window())
-        dlg.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        dlg.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint
+        )
         dlg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         dlg.setStyleSheet("QDialog { border: 1px solid #ccc; background: white; }")
 
@@ -127,6 +135,9 @@ class _DatePickerButton(QPushButton):
             if self._date
             else QDate(current_year - 30, 1, 1)
         )
+
+        # Track whether the user navigated (changed year/month) without picking a day
+        _state = {"nav_changed": False, "day_clicked": False}
 
         # ── Custom nav bar ──────────────────────────────────────────────
         MONTHS = ["January","February","March","April","May","June",
@@ -215,16 +226,102 @@ class _DatePickerButton(QPushButton):
 
         cal.currentPageChanged.connect(update_combos)
 
-        btn_prev.clicked.connect(lambda: cal.showPreviousMonth())
-        btn_next.clicked.connect(lambda: cal.showNextMonth())
+        def prev_month():
+            _state["nav_changed"] = True
+            cal.showPreviousMonth()
+
+        def next_month():
+            _state["nav_changed"] = True
+            cal.showNextMonth()
+
+        btn_prev.clicked.connect(prev_month)
+        btn_next.clicked.connect(next_month)
 
         def on_month_changed(idx):
+            _state["nav_changed"] = True
             cal.setCurrentPage(cal.yearShown(), idx + 1)
         month_combo.currentIndexChanged.connect(on_month_changed)
 
         def on_year_changed(idx):
+            _state["nav_changed"] = True
             cal.setCurrentPage(year_combo.itemData(idx), cal.monthShown())
         year_combo.currentIndexChanged.connect(on_year_changed)
+
+        def on_day_clicked(qdate: QDate):
+            _state["day_clicked"] = True
+            self.set_date(date(qdate.year(), qdate.month(), qdate.day()))
+            self.date_changed.emit(self._date)
+            dlg.accept()
+
+        cal.clicked.connect(on_day_clicked)
+
+        # ── Outside-click detection ──────────────────────────────────────
+        class _OutsideFilter(QObject):
+            def eventFilter(self_f, obj, event):
+                if event.type() == QEvent.Type.MouseButtonPress and dlg.isVisible():
+                    try:
+                        gpos = event.globalPosition().toPoint()
+                    except AttributeError:
+                        gpos = event.globalPos()
+                    if not dlg.geometry().contains(gpos):
+                        _try_close()
+                return False   # never consume — let click reach its target
+
+        def _try_close():
+            if not dlg.isVisible():
+                return
+            # Remove filter first to avoid it firing during the warning dialog
+            QApplication.instance().removeEventFilter(efilter)
+            if _state["nav_changed"] and not _state["day_clicked"]:
+                warn = QDialog(self.window())
+                warn.setWindowTitle("יציאה ללא בחירת תאריך")
+                warn.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+                warn.setMinimumWidth(300)
+                wl = QVBoxLayout(warn)
+                wl.setContentsMargins(20, 18, 20, 16)
+                wl.setSpacing(14)
+                lbl = QLabel(
+                    "<div dir='rtl' style='font-size:13px;'>"
+                    "ניווטת בלוח השנה אך לא בחרת יום.<br>"
+                    "התאריך <b>לא יישמר</b>. האם להמשיך?"
+                    "</div>"
+                )
+                lbl.setWordWrap(True)
+                wl.addWidget(lbl)
+                br = QHBoxLayout()
+                btn_back = QPushButton("חזור לבחירה")
+                btn_back.setFixedHeight(32)
+                btn_back.setStyleSheet(
+                    "background:#ecf0f1; color:#555; border:1px solid #ccc;"
+                    "border-radius:4px; padding:0 12px;"
+                )
+                btn_exit = QPushButton("סגור בלי לשמור")
+                btn_exit.setFixedHeight(32)
+                btn_exit.setStyleSheet(
+                    "background:#e74c3c; color:white; border:none;"
+                    "border-radius:4px; padding:0 12px;"
+                )
+                btn_back.clicked.connect(warn.reject)
+                btn_exit.clicked.connect(warn.accept)
+                br.addStretch()
+                br.addWidget(btn_back)
+                br.addWidget(btn_exit)
+                wl.addLayout(br)
+                if warn.exec() == QDialog.DialogCode.Rejected:
+                    # User chose to go back — reinstall filter and keep calendar open
+                    QApplication.instance().installEventFilter(efilter)
+                    return
+            dlg.reject()
+
+        efilter = _OutsideFilter(dlg)
+        QApplication.instance().installEventFilter(efilter)
+
+        def on_finished():
+            QApplication.instance().removeEventFilter(efilter)
+            # Short delay before allowing re-open to absorb any propagated clicks
+            QTimer.singleShot(150, lambda: setattr(self, '_calendar_open', False))
+
+        dlg.finished.connect(on_finished)
 
         dlg.adjustSize()
         pos = self.mapToGlobal(self.rect().bottomLeft())
@@ -233,12 +330,6 @@ class _DatePickerButton(QPushButton):
         y = min(pos.y(), screen.bottom() - dlg.height())
         dlg.move(QPoint(max(x, screen.left()), max(y, screen.top())))
 
-        def on_clicked(qdate: QDate):
-            self.set_date(date(qdate.year(), qdate.month(), qdate.day()))
-            self.date_changed.emit(self._date)
-            dlg.accept()
-
-        cal.clicked.connect(on_clicked)
         dlg.exec()
 
 
