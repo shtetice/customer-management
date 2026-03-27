@@ -55,6 +55,7 @@ class Customer(Base):
     receipts = relationship("Receipt", back_populates="customer", cascade="all, delete-orphan")
     files = relationship("CustomerFile", back_populates="customer", cascade="all, delete-orphan")
     contact_logs = relationship("ContactLog", back_populates="customer", cascade="all, delete-orphan")
+    appointments = relationship("Appointment", back_populates="customer", cascade="all, delete-orphan")
 
 
 class Treatment(Base):
@@ -163,3 +164,30 @@ class ActivityLog(Base):
     username = Column(String(100), nullable=False)
     action = Column(String(300), nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+# ---------- Appointments ----------
+
+class AppointmentStatus(enum.Enum):
+    SCHEDULED = "scheduled"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    NO_SHOW = "no_show"
+
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    staff_name = Column(String(150), nullable=True)
+    date = Column(DateTime, nullable=False)
+    duration_minutes = Column(Integer, nullable=False, default=60)
+    notes = Column(Text, nullable=True)
+    status = Column(Enum(AppointmentStatus), nullable=False, default=AppointmentStatus.SCHEDULED)
+    reminder_sent = Column(Boolean, default=False)
+    followup_sent = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    customer = relationship("Customer", back_populates="appointments")

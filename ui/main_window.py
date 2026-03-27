@@ -13,6 +13,7 @@ from ui.screens.customer_detail_screen import CustomerDetailScreen
 from ui.screens.settings_screen import SettingsScreen
 from ui.screens.user_management_screen import UserManagementScreen
 from ui.screens.activity_log_screen import ActivityLogScreen
+from ui.screens.calendar_screen import CalendarScreen
 from ui.styles import APP_STYLE
 from services.auth_service import auth_service
 from services.settings_service import settings_service
@@ -51,6 +52,7 @@ class MainWindow(QMainWindow):
         # Nav buttons
         self._nav_buttons = {}
         self._add_nav_button(sidebar_layout, "customers", "👥  לקוחות", "customers.view")
+        self._add_nav_button(sidebar_layout, "calendar", "📅  לוח תורים", "calendar.view")
         self._add_nav_button(sidebar_layout, "users", "👤  משתמשים", "users.manage")
         self._add_nav_button(sidebar_layout, "logs", "📋  יומן פעילות", "logs.view")
         self._add_nav_button(sidebar_layout, "settings", "⚙️  הגדרות", "settings.view")
@@ -119,6 +121,8 @@ class MainWindow(QMainWindow):
 
         if key == "customers":
             self._show_customer_list()
+        elif key == "calendar":
+            self._show_calendar()
         elif key == "users":
             self._show_user_management()
         elif key == "logs":
@@ -159,6 +163,13 @@ class MainWindow(QMainWindow):
         screen.cancelled.connect(lambda: self._show_customer_detail(customer_id))
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
+
+    def _show_calendar(self):
+        self._clear_stack()
+        screen = CalendarScreen()
+        self.stack.addWidget(screen)
+        self.stack.setCurrentWidget(screen)
+        self._set_nav_active("calendar")
 
     def _show_user_management(self):
         self._clear_stack()

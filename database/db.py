@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
-from database.models import Base, Feature, ContactLog, ActivityLog
+from database.models import Base, Feature, ContactLog, ActivityLog, Appointment
 
 DATABASE_URL = "sqlite:///customer_management.db"
 
@@ -72,6 +72,8 @@ DEFAULT_FEATURES = [
     ("users.manage",        "ניהול משתמשים",           "יצירה ועריכה של משתמשים (מנהל בלבד)"),
     ("settings.view",       "הגדרות",                  "גישה למסך ההגדרות"),
     ("logs.view",           "יומן פעילות",             "צפייה ביומן הפעילות (מנהל בלבד)"),
+    ("calendar.view",       "לוח תורים",               "גישה ללוח התורים"),
+    ("calendar.add",        "הוספת תור",               "הוספת תור חדש ללוח"),
 ]
 
 
