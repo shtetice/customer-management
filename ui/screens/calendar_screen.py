@@ -238,6 +238,46 @@ class _CalendarGrid(QWidget):
             card.show()
             self._cards.append(card)
 
+    def _confirm_move(self, customer_name: str, old_str: str, new_str: str) -> bool:
+        dlg = QDialog(self)
+        dlg.setWindowTitle("אישור הזזת תור")
+        dlg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        dlg.setMinimumWidth(320)
+        outer = QVBoxLayout(dlg)
+        outer.setContentsMargins(20, 20, 20, 16)
+        outer.setSpacing(14)
+
+        text = QLabel(
+            f"<div dir='rtl' style='font-size:13px;'>"
+            f"להזיז את התור של <b>{customer_name}</b>?<br><br>"
+            f"<b>מ:</b>  {old_str}<br>"
+            f"<b>אל:</b>  {new_str}"
+            f"</div>"
+        )
+        text.setWordWrap(True)
+        outer.addWidget(text)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
+        btn_no = QPushButton("ביטול")
+        btn_no.setFixedHeight(32)
+        btn_no.setStyleSheet(
+            "background:#ecf0f1; color:#555; border:1px solid #ccc; border-radius:4px; padding:0 14px;"
+        )
+        btn_yes = QPushButton("אישור")
+        btn_yes.setFixedHeight(32)
+        btn_yes.setStyleSheet(
+            "background:#3498db; color:white; border:none; border-radius:4px; padding:0 14px;"
+        )
+        btn_no.clicked.connect(dlg.reject)
+        btn_yes.clicked.connect(dlg.accept)
+        btn_row.addStretch()
+        btn_row.addWidget(btn_no)
+        btn_row.addWidget(btn_yes)
+        outer.addLayout(btn_row)
+
+        return dlg.exec() == QDialog.DialogCode.Accepted
+
     def _on_drag_ended(self, appt_id: int, cx: int, cy: int):
         """Called when a card is dropped. cx/cy are center in grid coords."""
         if cx < 0 or cx >= self._days_w:
@@ -266,17 +306,8 @@ class _CalendarGrid(QWidget):
         customer_name = self._customer_names.get(appt.customer_id, "לקוח")
         old_str = appt.date.strftime("%d/%m/%Y %H:%M")
         new_str = new_dt.strftime("%d/%m/%Y %H:%M")
-        msg = QMessageBox(self)
-        msg.setWindowTitle("אישור הזזת תור")
-        msg.setText(
-            f"להזיז את התור של {customer_name}?\n\n"
-            f"מ:  {old_str}\n"
-            f"אל:  {new_str}"
-        )
-        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        msg.setDefaultButton(QMessageBox.StandardButton.No)
-        msg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-        if msg.exec() != QMessageBox.StandardButton.Yes:
+        confirmed = self._confirm_move(customer_name, old_str, new_str)
+        if not confirmed:
             self._rebuild_cards()
             return
 
