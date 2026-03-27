@@ -112,7 +112,8 @@ class _DatePickerButton(QPushButton):
             self._apply_style(False)
 
     def _open_calendar(self):
-        # Prevent reopening if already open (e.g. click propagation after close)
+        # Prevent re-opening while already open or within 150ms of closing
+        # (click that closed the popup can propagate back to this button on macOS)
         if getattr(self, '_calendar_open', False):
             return
         self._calendar_open = True
@@ -136,7 +137,6 @@ class _DatePickerButton(QPushButton):
             else QDate(current_year - 30, 1, 1)
         )
 
-        # Track whether the user navigated (changed year/month) without picking a day
         _state = {"nav_changed": False, "day_clicked": False}
 
         # ── Custom nav bar ──────────────────────────────────────────────
@@ -196,7 +196,7 @@ class _DatePickerButton(QPushButton):
         nav_layout.addWidget(btn_next)
         layout.addWidget(nav)
 
-        # ── Calendar (nav bar hidden) ────────────────────────────────────
+        # ── Calendar ────────────────────────────────────────────────────
         cal = QCalendarWidget()
         cal.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         cal.setGridVisible(False)
@@ -215,7 +215,7 @@ class _DatePickerButton(QPushButton):
         """)
         layout.addWidget(cal)
 
-        # ── Sync logic ───────────────────────────────────────────────────
+        # ── Sync combos ↔ calendar ───────────────────────────────────────
         def update_combos(year, month):
             month_combo.blockSignals(True)
             year_combo.blockSignals(True)
@@ -255,22 +255,27 @@ class _DatePickerButton(QPushButton):
 
         cal.clicked.connect(on_day_clicked)
 
-        # ── Outside-click detection ──────────────────────────────────────
+        # ── Outside-click: close (with partial-nav warning) ─────────────
         class _OutsideFilter(QObject):
             def eventFilter(self_f, obj, event):
-                if event.type() == QEvent.Type.MouseButtonPress and dlg.isVisible():
-                    try:
-                        gpos = event.globalPosition().toPoint()
-                    except AttributeError:
-                        gpos = event.globalPos()
-                    if not dlg.geometry().contains(gpos):
-                        _try_close()
-                return False   # never consume — let click reach its target
+                if event.type() != QEvent.Type.MouseButtonPress:
+                    return False
+                if not dlg.isVisible():
+                    return False
+                # Ignore if a Qt popup (e.g. combo dropdown) is currently open
+                if QApplication.activePopupWidget() is not None:
+                    return False
+                try:
+                    gpos = event.globalPosition().toPoint()
+                except AttributeError:
+                    gpos = event.globalPos()
+                if not dlg.geometry().contains(gpos):
+                    _try_close()
+                return False  # never consume — let the click reach its target
 
         def _try_close():
             if not dlg.isVisible():
                 return
-            # Remove filter first to avoid it firing during the warning dialog
             QApplication.instance().removeEventFilter(efilter)
             if _state["nav_changed"] and not _state["day_clicked"]:
                 warn = QDialog(self.window())
@@ -308,7 +313,7 @@ class _DatePickerButton(QPushButton):
                 br.addWidget(btn_exit)
                 wl.addLayout(br)
                 if warn.exec() == QDialog.DialogCode.Rejected:
-                    # User chose to go back — reinstall filter and keep calendar open
+                    # Go back — reinstall filter and keep calendar open
                     QApplication.instance().installEventFilter(efilter)
                     return
             dlg.reject()
@@ -318,7 +323,6 @@ class _DatePickerButton(QPushButton):
 
         def on_finished():
             QApplication.instance().removeEventFilter(efilter)
-            # Short delay before allowing re-open to absorb any propagated clicks
             QTimer.singleShot(150, lambda: setattr(self, '_calendar_open', False))
 
         dlg.finished.connect(on_finished)
