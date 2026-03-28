@@ -125,6 +125,7 @@ class CustomerController:
         address: str = "",
         city: str = "",
         date_of_birth: date | None = None,
+        preferred_treatments: str = "",
     ) -> Customer:
         self._validate(name, surname, email)
         session = get_session()
@@ -142,6 +143,7 @@ class CustomerController:
                 address=address.strip() if address else None,
                 city=city.strip() if city else None,
                 date_of_birth=date_of_birth,
+                preferred_treatments=preferred_treatments or None,
             )
             session.add(customer)
             session.commit()
@@ -169,6 +171,7 @@ class CustomerController:
         address: str = "",
         city: str = "",
         date_of_birth: date | None = None,
+        preferred_treatments: str = "",
     ) -> Customer:
         self._validate(name, surname, email)
         session = get_session()
@@ -188,6 +191,7 @@ class CustomerController:
             customer.address = address.strip() if address else None
             customer.city = city.strip() if city else None
             customer.date_of_birth = date_of_birth
+            customer.preferred_treatments = preferred_treatments or None
             session.commit()
             session.refresh(customer)
             session.expunge(customer)

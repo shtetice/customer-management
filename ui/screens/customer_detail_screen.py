@@ -396,6 +396,14 @@ class CustomerDetailScreen(QWidget):
             dob = c.date_of_birth.strftime("%d/%m/%Y") if c.date_of_birth else ""
             self._add_grid_row(personal_grid, "תאריך לידה", dob)
             self._add_grid_row(personal_grid, "מגדר", GENDER_LABELS.get(c.gender, "") if c.gender else "")
+            import json
+            preferred = []
+            if c.preferred_treatments:
+                try:
+                    preferred = json.loads(c.preferred_treatments)
+                except Exception:
+                    pass
+            self._add_grid_row(personal_grid, "טיפולים מועדפים", "،  ".join(preferred) if preferred else "")
             self._info_layout.addWidget(personal_card)
 
             # Notes card — scrollable, 1000-word limit

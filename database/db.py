@@ -22,12 +22,13 @@ def _migrate():
             text("PRAGMA table_info(customers)")
         )]
         for col, typedef in [
-            ("phone2",             "VARCHAR(30)"),
-            ("phone3",             "VARCHAR(30)"),
-            ("address",            "VARCHAR(300)"),
-            ("city",               "VARCHAR(100)"),
-            ("date_of_birth",      "DATE"),
-            ("profile_photo_path", "VARCHAR(500)"),
+            ("phone2",               "VARCHAR(30)"),
+            ("phone3",               "VARCHAR(30)"),
+            ("address",              "VARCHAR(300)"),
+            ("city",                 "VARCHAR(100)"),
+            ("date_of_birth",        "DATE"),
+            ("profile_photo_path",   "VARCHAR(500)"),
+            ("preferred_treatments", "TEXT"),
         ]:
             if col not in existing:
                 conn.execute(text(

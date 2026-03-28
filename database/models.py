@@ -47,6 +47,7 @@ class Customer(Base):
     date_of_birth = Column(Date, nullable=True)
     status = Column(Enum(CustomerStatus), nullable=False, default=CustomerStatus.LEAD)
     notes = Column(Text, nullable=True)
+    preferred_treatments = Column(Text, nullable=True)  # JSON list of treatment names
     profile_photo_path = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

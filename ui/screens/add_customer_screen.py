@@ -527,6 +527,23 @@ class AddCustomerScreen(QWidget):
 
         form_layout.addLayout(row5)
 
+        # Preferred treatments (checkboxes, full width)
+        from PyQt6.QtWidgets import QCheckBox
+        treat_col = QVBoxLayout()
+        treat_col.setSpacing(6)
+        treat_col.addWidget(self._label("טיפולים מועדפים"))
+        treat_row = QHBoxLayout()
+        treat_row.setSpacing(16)
+        self._treatment_checks = {}
+        for t in ["הזרקות", "לייזר", "שיזוף בהתזה", "שיזוף מקלחון"]:
+            cb = QCheckBox(t)
+            cb.setStyleSheet("font-size: 13px; color: #2c3e50;")
+            treat_row.addWidget(cb)
+            self._treatment_checks[t] = cb
+        treat_row.addStretch()
+        treat_col.addLayout(treat_row)
+        form_layout.addLayout(treat_col)
+
         # Notes (full width)
         notes_col = QVBoxLayout()
         notes_col.setSpacing(4)
@@ -630,6 +647,16 @@ class AddCustomerScreen(QWidget):
                 self.dob_input.set_date(customer.date_of_birth)
             self.notes_input.setPlainText(customer.notes or "")
 
+            import json
+            selected = []
+            if customer.preferred_treatments:
+                try:
+                    selected = json.loads(customer.preferred_treatments)
+                except Exception:
+                    pass
+            for t, cb in self._treatment_checks.items():
+                cb.setChecked(t in selected)
+
             for i in range(self.gender_combo.count()):
                 if self.gender_combo.itemData(i) == customer.gender:
                     self.gender_combo.setCurrentIndex(i)
@@ -656,18 +683,25 @@ class AddCustomerScreen(QWidget):
         address = self.address_input.text().strip()
         city = self.city_input.text().strip()
         dob = self.dob_input.get_date()
+        import json
+        preferred = json.dumps(
+            [t for t, cb in self._treatment_checks.items() if cb.isChecked()],
+            ensure_ascii=False,
+        )
 
         try:
             if self._customer_id:
                 customer_controller.update(
                     self._customer_id, name, surname, gender,
                     phone, phone2, phone3, email, status, notes,
-                    address=address, city=city, date_of_birth=dob
+                    address=address, city=city, date_of_birth=dob,
+                    preferred_treatments=preferred,
                 )
             else:
                 customer_controller.create(
                     name, surname, gender, phone, phone2, phone3, email, status, notes,
-                    address=address, city=city, date_of_birth=dob
+                    address=address, city=city, date_of_birth=dob,
+                    preferred_treatments=preferred,
                 )
 
             self.error_label.setText("")
