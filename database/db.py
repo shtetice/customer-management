@@ -47,6 +47,13 @@ def _migrate():
             conn.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1"))
             conn.execute(text("UPDATE users SET is_active = 1 WHERE is_active IS NULL"))
 
+        # treatments.appointment_id — links auto-created treatments back to their source appointment
+        tables = [row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))]
+        if "treatments" in tables:
+            treatments_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(treatments)"))]
+            if "appointment_id" not in treatments_cols:
+                conn.execute(text("ALTER TABLE treatments ADD COLUMN appointment_id INTEGER REFERENCES appointments(id)"))
+
         conn.commit()
 
     # Seed NotificationLog for appointments already sent via the old flag-based system,

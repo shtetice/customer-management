@@ -284,6 +284,36 @@ class AppointmentController:
             session.close()
 
 
+    def get_past_scheduled(self) -> list[Appointment]:
+        """SCHEDULED appointments whose datetime has already passed."""
+        session = get_session()
+        try:
+            appts = (
+                session.query(Appointment)
+                .filter(
+                    Appointment.status == AppointmentStatus.SCHEDULED,
+                    Appointment.date < datetime.now(),
+                )
+                .order_by(Appointment.date)
+                .all()
+            )
+            for a in appts:
+                session.expunge(a)
+            return appts
+        finally:
+            session.close()
+
+    def mark_completed(self, appt_id: int):
+        session = get_session()
+        try:
+            a = session.query(Appointment).filter_by(id=appt_id).first()
+            if a:
+                a.status = AppointmentStatus.COMPLETED
+                a.updated_at = datetime.now()
+                session.commit()
+        finally:
+            session.close()
+
     def get_scheduled_in_window(self, start: datetime, end: datetime) -> list[Appointment]:
         """Return SCHEDULED appointments whose date falls in (start, end]."""
         session = get_session()

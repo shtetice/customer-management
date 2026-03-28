@@ -28,6 +28,37 @@ class TreatmentController:
         finally:
             session.close()
 
+    def get_by_appointment_id(self, appointment_id: int) -> Treatment | None:
+        session = get_session()
+        try:
+            t = session.query(Treatment).filter_by(appointment_id=appointment_id).first()
+            if t:
+                session.expunge(t)
+            return t
+        finally:
+            session.close()
+
+    def create_from_appointment(self, appt) -> Treatment:
+        """Auto-create a treatment record from a past scheduled appointment."""
+        description = (appt.notes.strip() if appt.notes else "") or "טיפול"
+        session = get_session()
+        try:
+            treatment = Treatment(
+                customer_id=appt.customer_id,
+                appointment_id=appt.id,
+                date=appt.date,
+                description=description,
+                performed_by=appt.staff_name or None,
+                notes="נוצר אוטומטית מתור מתוכנן",
+            )
+            session.add(treatment)
+            session.commit()
+            session.refresh(treatment)
+            session.expunge(treatment)
+            return treatment
+        finally:
+            session.close()
+
     def get_by_id(self, treatment_id: int) -> Treatment | None:
         session = get_session()
         try:

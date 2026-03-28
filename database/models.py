@@ -63,6 +63,7 @@ class Treatment(Base):
 
     id = Column(Integer, primary_key=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=False)
+    appointment_id = Column(Integer, ForeignKey("appointments.id"), nullable=True)
     date = Column(DateTime, nullable=False, default=datetime.utcnow)
     description = Column(Text, nullable=False)
     performed_by = Column(String(150), nullable=True)

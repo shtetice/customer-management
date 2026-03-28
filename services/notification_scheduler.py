@@ -78,10 +78,26 @@ class NotificationScheduler:
     def _run(self):
         while not self._stop_event.is_set():
             try:
+                self._create_auto_treatments()
+            except Exception as e:
+                logger.error(f"Auto-treatment error: {e}")
+            try:
                 self._process()
             except Exception as e:
                 logger.error(f"Notification scheduler error: {e}")
             self._stop_event.wait(_CHECK_INTERVAL_SECONDS)
+
+    def _create_auto_treatments(self):
+        """For every past SCHEDULED appointment, auto-create a treatment and mark it COMPLETED."""
+        from controllers.appointment_controller import appointment_controller
+        from controllers.treatment_controller import treatment_controller
+
+        for appt in appointment_controller.get_past_scheduled():
+            if treatment_controller.get_by_appointment_id(appt.id):
+                continue   # already processed
+            treatment_controller.create_from_appointment(appt)
+            appointment_controller.mark_completed(appt.id)
+            logger.info(f"Auto-created treatment for appointment {appt.id}")
 
     def _process(self):
         if not self._process_lock.acquire(blocking=False):
