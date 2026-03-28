@@ -45,25 +45,11 @@ class MainWindow(QMainWindow):
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
 
-        app_title = QLabel("ניהול לקוחות")
-        app_title.setObjectName("app_title")
-        app_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        sidebar_layout.addWidget(app_title)
-
-        # Nav buttons
-        self._nav_buttons = {}
-        self._add_nav_button(sidebar_layout, "customers", "👥  לקוחות", "customers.view")
-        self._add_nav_button(sidebar_layout, "calendar", "📅  לוח תורים", "calendar.view")
-        self._add_nav_button(sidebar_layout, "users", "👤  משתמשים", "users.manage")
-        self._add_nav_button(sidebar_layout, "logs", "📋  יומן פעילות", "logs.view")
-        self._add_nav_button(sidebar_layout, "settings", "⚙️  הגדרות", "settings.view")
-        sidebar_layout.addStretch()
-
-        # Clock / date widget
+        # Clock / date at top of sidebar
         clock_widget = QWidget()
         clock_widget.setStyleSheet("background: transparent; border: none;")
         clock_layout = QVBoxLayout(clock_widget)
-        clock_layout.setContentsMargins(0, 8, 0, 4)
+        clock_layout.setContentsMargins(0, 10, 0, 6)
         clock_layout.setSpacing(2)
 
         self._clock_time_label = QLabel()
@@ -87,6 +73,15 @@ class MainWindow(QMainWindow):
         self._clock_timer.timeout.connect(self._update_clock)
         self._clock_timer.start(1000)
         self._update_clock()
+
+        # Nav buttons
+        self._nav_buttons = {}
+        self._add_nav_button(sidebar_layout, "customers", "👥  לקוחות", "customers.view")
+        self._add_nav_button(sidebar_layout, "calendar", "📅  לוח תורים", "calendar.view")
+        self._add_nav_button(sidebar_layout, "users", "👤  משתמשים", "users.manage")
+        self._add_nav_button(sidebar_layout, "logs", "📋  יומן פעילות", "logs.view")
+        self._add_nav_button(sidebar_layout, "settings", "⚙️  הגדרות", "settings.view")
+        sidebar_layout.addStretch()
 
         # Clinic logo at bottom of sidebar (50% opacity)
         logo_path = settings_service.get("clinic_logo_path", "")
