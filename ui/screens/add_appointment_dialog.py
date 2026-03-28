@@ -93,7 +93,7 @@ class _TimePickerButton(QPushButton):
         QTimer.singleShot(0, self._show_popup)
 
     def _show_popup(self):
-        popup = QDialog(None)
+        popup = QDialog(self.window())
         popup.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         popup.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         vl = QVBoxLayout(popup)
