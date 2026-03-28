@@ -1,15 +1,78 @@
 from __future__ import annotations
+import re
 from datetime import datetime
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTextEdit, QFrame, QTabWidget, QTableWidget, QTableWidgetItem,
     QHeaderView, QDialog, QDialogButtonBox, QScrollArea, QMessageBox,
-    QSizePolicy,
+    QSizePolicy, QMenu,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont, QColor, QBrush
+from PyQt6.QtGui import (
+    QFont, QColor, QBrush, QSyntaxHighlighter, QTextCharFormat, QTextCursor,
+    QAction,
+)
 
 from controllers.campaign_controller import campaign_controller
+
+# ── Hebrew spell checker ───────────────────────────────────────────────────────
+try:
+    import enchant as _enchant
+    _HE_DICT = _enchant.Dict("he")
+except Exception:
+    _HE_DICT = None
+
+_HEB_RE = re.compile(r"[\u0590-\u05FF]+")
+
+
+class _HebrewSpellHighlighter(QSyntaxHighlighter):
+    def __init__(self, document):
+        super().__init__(document)
+        self._fmt = QTextCharFormat()
+        self._fmt.setUnderlineStyle(QTextCharFormat.UnderlineStyle.SpellCheckUnderline)
+        self._fmt.setUnderlineColor(QColor("#e74c3c"))
+
+    def highlightBlock(self, text: str):
+        if _HE_DICT is None:
+            return
+        for m in _HEB_RE.finditer(text):
+            word = m.group()
+            if not _HE_DICT.check(word):
+                self.setFormat(m.start(), len(word), self._fmt)
+
+
+class _SpellTextEdit(QTextEdit):
+    """QTextEdit with optional Hebrew real-time spell checking."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if _HE_DICT is not None:
+            self._highlighter = _HebrewSpellHighlighter(self.document())
+        else:
+            self._highlighter = None
+
+    def contextMenuEvent(self, event):
+        menu = self.createStandardContextMenu()
+
+        if _HE_DICT is not None:
+            cursor = self.cursorForPosition(event.pos())
+            cursor.select(QTextCursor.SelectionType.WordUnderCursor)
+            word = cursor.selectedText()
+
+            if word and _HEB_RE.fullmatch(word) and not _HE_DICT.check(word):
+                suggestions = _HE_DICT.suggest(word)[:5]
+                if suggestions:
+                    sep = menu.insertSeparator(menu.actions()[0])
+                    for sug in reversed(suggestions):
+                        act = QAction(sug, menu)
+                        # capture loop variable correctly
+                        act.triggered.connect(
+                            lambda checked=False, s=sug, c=QTextCursor(cursor):
+                                (c.insertText(s), self.setTextCursor(c))
+                        )
+                        menu.insertAction(sep, act)
+
+        menu.exec(event.globalPos())
 
 _BTN = """
     QPushButton {{ background: {bg}; color: {fg}; border: none;
@@ -107,7 +170,7 @@ class MarketingScreen(QWidget):
         msg_lbl.setStyleSheet("font-size: 13px; font-weight: bold; color: #2c3e50;")
         layout.addWidget(msg_lbl)
 
-        self._msg_edit = QTextEdit()
+        self._msg_edit = _SpellTextEdit()
         self._msg_edit.setPlaceholderText("כתוב את הודעת הקמפיין כאן...")
         self._msg_edit.setMinimumHeight(120)
         self._msg_edit.setStyleSheet("""
