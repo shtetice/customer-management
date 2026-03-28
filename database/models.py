@@ -196,6 +196,35 @@ class Appointment(Base):
     customer = relationship("Customer", back_populates="appointments")
 
 
+# ---------- Marketing Campaigns ----------
+
+class Campaign(Base):
+    """A bulk WhatsApp marketing message sent to a list of customers."""
+    __tablename__ = "campaigns"
+
+    id         = Column(Integer, primary_key=True)
+    message    = Column(Text, nullable=False)
+    sent_at    = Column(DateTime, default=datetime.now)
+    sent_by    = Column(String(100), nullable=True)
+
+    recipients = relationship("CampaignRecipient", back_populates="campaign",
+                              cascade="all, delete-orphan")
+
+
+class CampaignRecipient(Base):
+    """One customer in a campaign, with send outcome."""
+    __tablename__ = "campaign_recipients"
+
+    id            = Column(Integer, primary_key=True)
+    campaign_id   = Column(Integer, ForeignKey("campaigns.id"), nullable=False)
+    customer_id   = Column(Integer, ForeignKey("customers.id"), nullable=True)
+    customer_name = Column(String(200), nullable=True)   # snapshot at send time
+    phone         = Column(String(30), nullable=True)
+    status        = Column(String(20), nullable=False, default="sent")  # sent/failed/skipped
+
+    campaign = relationship("Campaign", back_populates="recipients")
+
+
 # ---------- Notification Log ----------
 
 class NotificationLog(Base):

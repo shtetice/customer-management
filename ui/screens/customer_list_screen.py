@@ -18,9 +18,10 @@ from ui.styles import STATUS_COLORS, STATUS_BG_COLORS, STATUS_LABELS
 
 
 class CustomerListScreen(QWidget):
-    request_add_customer = pyqtSignal()
-    request_edit_customer = pyqtSignal(int)   # customer_id
-    request_view_customer = pyqtSignal(int)   # customer_id
+    request_add_customer  = pyqtSignal()
+    request_edit_customer = pyqtSignal(int)    # customer_id
+    request_view_customer = pyqtSignal(int)    # customer_id
+    request_campaign      = pyqtSignal(list)   # list of Customer objects
 
     COLUMNS = ["שם", "שם משפחה", "טלפון", "אימייל", "סטטוס", "פעולות"]
 
@@ -58,6 +59,16 @@ class CustomerListScreen(QWidget):
         title.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         header_row.addWidget(title)
         header_row.addStretch()
+
+        btn_campaign = QPushButton("📢  שלח לקמפיין")
+        btn_campaign.setFixedHeight(34)
+        btn_campaign.setStyleSheet("""
+            QPushButton { background:#8e44ad; color:white; border:none; border-radius:4px;
+                          font-size:13px; padding: 0 12px; }
+            QPushButton:hover { background:#732d91; }
+        """)
+        btn_campaign.clicked.connect(self._send_to_campaign)
+        header_row.addWidget(btn_campaign)
 
         btn_csv = QPushButton("ייצא CSV")
         btn_csv.setFixedHeight(34)
@@ -312,6 +323,12 @@ class CustomerListScreen(QWidget):
         item = QTableWidgetItem(text or "")
         item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignAbsolute | Qt.AlignmentFlag.AlignVCenter)
         return item
+
+    def _send_to_campaign(self):
+        if not self._current_customers:
+            QMessageBox.information(self, "קמפיין", "אין לקוחות ברשימה הנוכחית.")
+            return
+        self.request_campaign.emit(list(self._current_customers))
 
     def _export_csv(self):
         if not self._current_customers:

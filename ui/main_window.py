@@ -15,6 +15,7 @@ from ui.screens.settings_screen import SettingsScreen
 from ui.screens.user_management_screen import UserManagementScreen
 from ui.screens.activity_log_screen import ActivityLogScreen
 from ui.screens.calendar_screen import CalendarScreen
+from ui.screens.marketing_screen import MarketingScreen
 from ui.styles import APP_STYLE
 from services.auth_service import auth_service
 from services.settings_service import settings_service
@@ -78,6 +79,7 @@ class MainWindow(QMainWindow):
         self._nav_buttons = {}
         self._add_nav_button(sidebar_layout, "customers", "👥  לקוחות", "customers.view")
         self._add_nav_button(sidebar_layout, "calendar", "📅  לוח תורים", "calendar.view")
+        self._add_nav_button(sidebar_layout, "marketing", "📢  שיווק", "customers.view")
         self._add_nav_button(sidebar_layout, "users", "👤  משתמשים", "users.manage")
         self._add_nav_button(sidebar_layout, "logs", "📋  יומן פעילות", "logs.view")
         self._add_nav_button(sidebar_layout, "settings", "⚙️  הגדרות", "settings.view")
@@ -163,6 +165,8 @@ class MainWindow(QMainWindow):
             self._show_customer_list()
         elif key == "calendar":
             self._show_calendar()
+        elif key == "marketing":
+            self._show_marketing([])
         elif key == "users":
             self._show_user_management()
         elif key == "logs":
@@ -176,6 +180,7 @@ class MainWindow(QMainWindow):
         screen.request_add_customer.connect(self._show_add_customer)
         screen.request_edit_customer.connect(self._show_edit_customer)
         screen.request_view_customer.connect(self._show_customer_detail)
+        screen.request_campaign.connect(self._show_marketing)
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
         self._set_nav_active("customers")
@@ -210,6 +215,14 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(screen)
         self.stack.setCurrentWidget(screen)
         self._set_nav_active("calendar")
+
+    def _show_marketing(self, customers: list):
+        self._clear_stack()
+        screen = MarketingScreen(customers)
+        screen.back_requested.connect(self._show_customer_list)
+        self.stack.addWidget(screen)
+        self.stack.setCurrentWidget(screen)
+        self._set_nav_active("marketing")
 
     def _show_user_management(self):
         self._clear_stack()
