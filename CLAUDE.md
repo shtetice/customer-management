@@ -91,33 +91,36 @@ If the user says anything like "we're done for today", "let's stop here", "that'
 ## Session Memory
 *Updated at the end of each working session.*
 
-**Last session:** 2026-03-27
+**Last session:** 2026-03-28
 
 **Completed today:**
-- **Calendar feature** — fully built (week + month views, drag-and-drop with confirmation, add/edit/delete, search, daily summary dialog, Saturday warning, past-date block, month view height fix)
-- **Sidebar logo — circular avatar** — logo scaled to 140×140px, clipped to circle via `QPainterPath`; background sampled from corner pixel of image to fill full circle; `QPainter`/`QPainterPath` imports added to `ui/main_window.py`
-- **PDF logo sizing** — `services/pdf_service.py` now uses `_logo_size()` (Pillow-based) for correct aspect-ratio scaling; `_LOGO_MAX_W/H` bumped to 60×45mm
+- **Hebrew spell checker** — real-time underline via `_HebrewSpellHighlighter(QSyntaxHighlighter)` + right-click suggestions in `_SpellTextEdit`; uses pyenchant/enchant `he` dict; graceful fallback if unavailable
+- **Campaign name field** — mandatory internal-use name added to compose tab (`QLineEdit`), history table (first column "שם קמפיין"), detail dialog title, Campaign model + DB migration
+- **Typed send confirmation** — `_TypeConfirmDialog` shows message preview + customer list; "שלח" button locked until user types exactly `אישור`; this runs before the repeat-customer check
+- **Spelling warning in confirmation** — if message has misspelled Hebrew words, a yellow warning banner lists them inside the confirmation dialog
 
 **Key files:**
-- `ui/main_window.py` — circular logo rendering (line ~63–90); `closeEvent` always quits (line ~179)
-- `ui/screens/calendar_screen.py` — full calendar feature
-- `ui/screens/add_appointment_dialog.py` — new/edit appointment dialog with date validation
-- `services/pdf_service.py` — `_logo_size()` function (line ~22)
+- `ui/screens/marketing_screen.py` — all marketing UI; spell checker at top of file (~line 18–75); `_TypeConfirmDialog` (~line 399–485); `_on_send` flow (~line 244–311)
+- `database/models.py` — `Campaign.name` column (~line 205)
+- `database/db.py` — migration for `campaigns.name` column (~line 58–62)
+- `controllers/campaign_controller.py` — `send_campaign()` accepts `name` param (~line 47)
 
 **Next steps (priority order for next session):**
-1. **WhatsApp notification integration** — `notification_service.py` is a stub; waiting for Meta API credentials (`whatsapp_token`, `whatsapp_phone_id`) from clinic
-2. **Compile to Windows `.exe`** — PyInstaller spec needs `msoffcrypto`, `openpyxl`, `cryptography`, `Pillow`; user is on Mac
+1. **Twilio production** — switch from sandbox to production WhatsApp number (Facebook Business Manager, Meta approval, pre-approved templates); waiting for user to initiate
+2. **Compile to Windows `.exe`** — PyInstaller spec needs `msoffcrypto`, `openpyxl`, `cryptography`, `Pillow`, `pyenchant`; user is on Mac; enchant C lib must be bundled
 3. **Manual export** — auto-backup done; manual CSV/Excel export not yet implemented
-4. **Receipt format** — currently PDF (via fpdf2); verify logo renders correctly on Windows
+4. **Tests for marketing/campaign features** — no tests written for `campaign_controller`, `MarketingScreen`, or the new name/spell flows
 
 **Open questions / blockers:**
-- WhatsApp: waiting on Meta Business API credentials from clinic
+- Twilio: waiting on user to initiate Meta Business Manager setup
+- pyenchant on Windows: enchant C library needs to be present; may need to bundle hunspell DLL in PyInstaller build
 
 **Important context:**
-- `app.setQuitOnLastWindowClosed(False)` must stay — without it, closing the login window before the main window appears kills the app prematurely
-- `LoginScreen._logging_in = True` must be set before `login_successful.emit()` — otherwise `login.close()` in `on_login()` triggers `closeEvent → app.quit()` mid-login
+- `app.setQuitOnLastWindowClosed(False)` must stay — without it, closing the login window kills the app prematurely
+- `LoginScreen._logging_in = True` must be set before `login_successful.emit()`
 - `closeEvent` on `MainWindow` always calls `app.quit()` — do NOT add conditional logic back
-- `_DatePickerButton` lives in `add_customer_screen.py` and is imported by `add_treatment_screen.py`, `add_receipt_screen.py`, and `add_appointment_dialog.py`
-- Global `QTableWidget::item` stylesheet must NOT set `color` or `background-color` — silently overrides item data roles
-- Sidebar logo circle: background fill color is sampled from pixel (0,0) of the scaled source — works correctly when logo has a uniform background
-- All 74 tests passing
+- `_DatePickerButton` lives in `add_customer_screen.py` and is imported by `add_treatment_screen.py`, `add_receipt_screen.py`, `add_appointment_dialog.py`
+- Global `QTableWidget::item` stylesheet must NOT set `color` or `background-color`
+- Campaign name column migration: checks `if "campaigns" in tables` before altering — safe for fresh installs
+- `_TypeConfirmDialog` uses `text.strip() == "אישור"` — strips whitespace so user can't accidentally type a space; intentional
+- All 78 tests passing
