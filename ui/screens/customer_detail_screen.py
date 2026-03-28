@@ -296,13 +296,19 @@ class CustomerDetailScreen(QWidget):
     # ── Info tab ──────────────────────────────────────────────
 
     def _build_info_tab(self) -> QWidget:
-        widget = QWidget()
-        widget.setStyleSheet("background: transparent;")
-        self._info_layout = QVBoxLayout(widget)
+        inner = QWidget()
+        inner.setStyleSheet("background: transparent;")
+        self._info_layout = QVBoxLayout(inner)
         self._info_layout.setSpacing(16)
         self._info_layout.setContentsMargins(20, 16, 20, 20)
         self._refresh_info()
-        return widget
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { border: none; background: transparent; }")
+        scroll.setWidget(inner)
+        return scroll
 
     @staticmethod
     def _make_section_card(title: str) -> tuple[QWidget, QVBoxLayout]:
