@@ -96,8 +96,10 @@ class _TimePickerButton(QPushButton):
         popup = QDialog(self.window())
         popup.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
         popup.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        popup.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         vl = QVBoxLayout(popup)
         vl.setContentsMargins(0, 0, 0, 0)
+        vl.setSpacing(0)
 
         lst = QListWidget()
         lst.setStyleSheet("""
@@ -116,8 +118,10 @@ class _TimePickerButton(QPushButton):
                 lst.setCurrentItem(item)
                 lst.scrollToItem(item)
 
-        lst.setFixedWidth(120)
-        lst.setFixedHeight(min(len(_TIME_SLOTS) * 32, 280))
+        w, h = 120, min(len(_TIME_SLOTS) * 32, 280)
+        lst.setFixedWidth(w)
+        lst.setFixedHeight(h)
+        popup.setFixedSize(w, h)
         lst.itemClicked.connect(lambda item: self._select(item, popup))
         vl.addWidget(lst)
 
