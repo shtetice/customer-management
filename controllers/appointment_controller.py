@@ -160,15 +160,15 @@ class AppointmentController:
             session.close()
 
     def get_pending_reminders(self) -> list[Appointment]:
-        """Scheduled appointments within the 24h reminder window not yet notified."""
+        """Scheduled appointments within the next 24h not yet reminded."""
         now = datetime.utcnow()
         session = get_session()
         try:
             appts = (
                 session.query(Appointment)
                 .filter(
-                    Appointment.date >= now + timedelta(hours=23),
-                    Appointment.date < now + timedelta(hours=25),
+                    Appointment.date > now,
+                    Appointment.date <= now + timedelta(hours=24),
                     Appointment.reminder_sent == False,
                     Appointment.status == AppointmentStatus.SCHEDULED,
                 )
@@ -181,15 +181,15 @@ class AppointmentController:
             session.close()
 
     def get_pending_followups(self) -> list[Appointment]:
-        """Completed appointments within the 72h follow-up window not yet notified."""
+        """Completed appointments in the past 72h not yet followed up."""
         now = datetime.utcnow()
         session = get_session()
         try:
             appts = (
                 session.query(Appointment)
                 .filter(
-                    Appointment.date >= now - timedelta(hours=73),
-                    Appointment.date < now - timedelta(hours=71),
+                    Appointment.date >= now - timedelta(hours=72),
+                    Appointment.date < now,
                     Appointment.followup_sent == False,
                     Appointment.status == AppointmentStatus.COMPLETED,
                 )
