@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTextEdit, QLineEdit, QFrame, QTabWidget, QTableWidget, QTableWidgetItem,
     QHeaderView, QDialog, QDialogButtonBox, QScrollArea, QMessageBox,
-    QSizePolicy, QMenu,
+    QSizePolicy,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import (
@@ -354,19 +354,18 @@ class MarketingScreen(QWidget):
         return widget
 
     def _refresh_history(self):
-        campaigns = campaign_controller.get_all()
-        self._campaigns = campaigns
+        rows = campaign_controller.get_all_with_counts()
+        self._campaigns = [camp for camp, *_ in rows]
         self._history_table.setRowCount(0)
-        for i, camp in enumerate(campaigns):
+        for i, (camp, sent, failed, skipped) in enumerate(rows):
             self._history_table.insertRow(i)
             self._history_table.setItem(i, 0, self._cell(camp.name or ""))
             dt_str = camp.sent_at.strftime("%d/%m/%Y %H:%M") if camp.sent_at else ""
             self._history_table.setItem(i, 1, self._cell(dt_str))
             self._history_table.setItem(i, 2, self._cell(camp.sent_by or ""))
-            counts = campaign_controller.count_recipients(camp.id)
-            self._history_table.setItem(i, 3, self._cell(str(counts.get("sent", 0)), color="#27ae60"))
-            self._history_table.setItem(i, 4, self._cell(str(counts.get("failed", 0)), color="#e74c3c"))
-            self._history_table.setItem(i, 5, self._cell(str(counts.get("skipped", 0)), color="#e67e22"))
+            self._history_table.setItem(i, 3, self._cell(str(sent), color="#27ae60"))
+            self._history_table.setItem(i, 4, self._cell(str(failed), color="#e74c3c"))
+            self._history_table.setItem(i, 5, self._cell(str(skipped), color="#e67e22"))
 
     @staticmethod
     def _cell(text: str, color: str | None = None) -> QTableWidgetItem:
@@ -448,7 +447,7 @@ class _TypeConfirmDialog(QDialog):
         names_box = QTextEdit()
         names_box.setReadOnly(True)
         names_box.setPlainText(names_text)
-        names_box.setFixedHeight(min(120, 24 + n * 20))
+        names_box.setFixedHeight(min(160, 24 + n * 20))
         names_box.setStyleSheet(
             "QTextEdit { border: 1px solid #dde; border-radius: 4px; padding: 6px; font-size: 12px; }"
         )
@@ -477,7 +476,7 @@ class _TypeConfirmDialog(QDialog):
         layout.addWidget(btns)
 
     def _on_text_changed(self, text: str):
-        ok = text.strip() == self._REQUIRED
+        ok = text.strip() == self._REQUIRED  # strip() is intentional — tolerates leading/trailing spaces
         self._btn_ok.setEnabled(ok)
         self._confirm_input.setStyleSheet(
             "QLineEdit { border: 2px solid %s; border-radius: 6px; padding: 6px 10px; font-size: 14px; }"

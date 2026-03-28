@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from database.db import get_session
 from database.models import Campaign, CampaignRecipient
 from services.auth_service import auth_service
+from sqlalchemy import func
 
 
 class CampaignController:
@@ -62,7 +63,7 @@ class CampaignController:
         session = get_session()
         try:
             campaign = Campaign(
-                name=name or None,
+                name=name,
                 message=message,
                 sent_by=auth_service.current_user.username if auth_service.current_user else None,
             )
@@ -71,12 +72,12 @@ class CampaignController:
 
             sent = failed = skipped = 0
             for c in customers:
-                name = f"{c.name} {c.surname}"
+                full_name = f"{c.name} {c.surname}"
                 if c.id in skip_ids:
                     session.add(CampaignRecipient(
                         campaign_id=campaign.id,
                         customer_id=c.id,
-                        customer_name=name,
+                        customer_name=full_name,
                         phone=c.phone,
                         status="skipped",
                     ))
@@ -87,7 +88,7 @@ class CampaignController:
                 session.add(CampaignRecipient(
                     campaign_id=campaign.id,
                     customer_id=c.id,
-                    customer_name=name,
+                    customer_name=full_name,
                     phone=c.phone,
                     status="sent" if ok else "failed",
                 ))
@@ -99,6 +100,44 @@ class CampaignController:
             campaign_id = campaign.id
             session.commit()
             return campaign_id, sent, failed, skipped
+        finally:
+            session.close()
+
+    def get_all_with_counts(self) -> list[tuple]:
+        """Returns list of (Campaign, sent, failed, skipped) using 2 queries instead of N+1."""
+        session = get_session()
+        try:
+            campaigns = (
+                session.query(Campaign)
+                .order_by(Campaign.sent_at.desc())
+                .all()
+            )
+            if not campaigns:
+                return []
+
+            camp_ids = [c.id for c in campaigns]
+            rows = (
+                session.query(
+                    CampaignRecipient.campaign_id,
+                    CampaignRecipient.status,
+                    func.count(CampaignRecipient.id),
+                )
+                .filter(CampaignRecipient.campaign_id.in_(camp_ids))
+                .group_by(CampaignRecipient.campaign_id, CampaignRecipient.status)
+                .all()
+            )
+
+            counts: dict[int, dict[str, int]] = {}
+            for camp_id, status, cnt in rows:
+                counts.setdefault(camp_id, {"sent": 0, "failed": 0, "skipped": 0})
+                counts[camp_id][status] = cnt
+
+            result = []
+            for c in campaigns:
+                session.expunge(c)
+                c_counts = counts.get(c.id, {"sent": 0, "failed": 0, "skipped": 0})
+                result.append((c, c_counts["sent"], c_counts["failed"], c_counts["skipped"]))
+            return result
         finally:
             session.close()
 
