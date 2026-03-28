@@ -100,7 +100,7 @@ class NotificationService:
             return False, f"מספר טלפון לא תקין: {phone}"
         try:
             self._client().messages.create(
-                from_=TWILIO_FROM,
+                from_=_twilio_from(),
                 to=to,
                 body="הודעת בדיקה ממערכת ניהול הלקוחות. הכל תקין!",
             )
