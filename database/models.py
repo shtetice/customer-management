@@ -188,6 +188,7 @@ class Appointment(Base):
     status = Column(Enum(AppointmentStatus), nullable=False, default=AppointmentStatus.SCHEDULED)
     reminder_sent = Column(Boolean, default=False)
     followup_sent = Column(Boolean, default=False)
+    google_event_id = Column(String(200), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

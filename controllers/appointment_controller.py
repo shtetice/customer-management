@@ -14,6 +14,42 @@ _STATUS_HEB = {
 }
 
 
+def _sync_push(appt):
+    """Push appt to Google Calendar in a background thread (non-blocking)."""
+    import threading
+    def _run():
+        try:
+            from services.google_calendar_service import google_calendar_service
+            if not google_calendar_service.is_connected():
+                return
+            from controllers.customer_controller import customer_controller
+            c = customer_controller.get_by_id(appt.customer_id)
+            name = f"{c.name} {c.surname}" if c else "לקוח"
+            event_id = google_calendar_service.push_appointment(appt, name)
+            if event_id != appt.google_event_id:
+                appointment_controller.set_google_event_id(appt.id, event_id)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Google sync push failed: {e}")
+    threading.Thread(target=_run, daemon=True).start()
+
+
+def _sync_delete(google_event_id: str | None):
+    """Delete a Google Calendar event in a background thread."""
+    if not google_event_id:
+        return
+    import threading
+    def _run():
+        try:
+            from services.google_calendar_service import google_calendar_service
+            if google_calendar_service.is_connected():
+                google_calendar_service.delete_event(google_event_id)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Google sync delete failed: {e}")
+    threading.Thread(target=_run, daemon=True).start()
+
+
 def _cname(customer_id: int) -> str:
     from controllers.customer_controller import customer_controller
     c = customer_controller.get_by_id(customer_id)
@@ -76,6 +112,7 @@ class AppointmentController:
             if auth_service.current_user:
                 log_action(auth_service.current_user.username,
                            f"הוספת תור: {_cname(customer_id)} | {_dt(date)}")
+            _sync_push(appt)
             return appt
         finally:
             session.close()
@@ -106,6 +143,7 @@ class AppointmentController:
             if auth_service.current_user:
                 log_action(auth_service.current_user.username,
                            f"עדכון תור: {_cname(a.customer_id)} | {_dt(a.date)} | {_STATUS_HEB.get(a.status, '')}")
+            _sync_push(a)
             return a
         finally:
             session.close()
@@ -116,12 +154,13 @@ class AppointmentController:
             a = session.query(Appointment).filter_by(id=appt_id).first()
             if not a:
                 raise ValueError(f"תור עם מזהה {appt_id} לא נמצא")
-            _log_cid, _log_dt = a.customer_id, a.date
+            _log_cid, _log_dt, _gid = a.customer_id, a.date, a.google_event_id
             session.delete(a)
             session.commit()
             if auth_service.current_user:
                 log_action(auth_service.current_user.username,
                            f"מחיקת תור: {_cname(_log_cid)} | {_dt(_log_dt)}")
+            _sync_delete(_gid)
         finally:
             session.close()
 
@@ -300,6 +339,16 @@ class AppointmentController:
             for a in appts:
                 session.expunge(a)
             return appts
+        finally:
+            session.close()
+
+    def set_google_event_id(self, appt_id: int, event_id: str | None):
+        session = get_session()
+        try:
+            a = session.query(Appointment).filter_by(id=appt_id).first()
+            if a:
+                a.google_event_id = event_id
+                session.commit()
         finally:
             session.close()
 

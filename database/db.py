@@ -54,6 +54,11 @@ def _migrate():
             if "appointment_id" not in treatments_cols:
                 conn.execute(text("ALTER TABLE treatments ADD COLUMN appointment_id INTEGER REFERENCES appointments(id)"))
 
+        if "appointments" in tables:
+            appt_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(appointments)"))]
+            if "google_event_id" not in appt_cols:
+                conn.execute(text("ALTER TABLE appointments ADD COLUMN google_event_id VARCHAR(200)"))
+
         conn.commit()
 
     # Seed NotificationLog for appointments already sent via the old flag-based system,

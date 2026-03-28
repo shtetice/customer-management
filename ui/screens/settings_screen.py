@@ -399,6 +399,112 @@ class SettingsScreen(QWidget):
         self._wa_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
         wa_layout.addWidget(self._wa_status_label)
 
+        # ── Section: Google Calendar ───────────────────────────
+        gcal_section = self._section("סנכרון Google Calendar")
+        layout.addWidget(gcal_section)
+        gcal_layout = gcal_section.layout()
+
+        gcal_note = QLabel(
+            "סנכרן תורים לחשבון Google Calendar שלך לגיבוי ונגישות מכל מקום.\n"
+            "תחילה צור פרטי OAuth 2.0 ב-Google Cloud Console (Desktop App) והורד את credentials.json."
+        )
+        gcal_note.setWordWrap(True)
+        gcal_note.setStyleSheet("color: #666; font-size: 12px; border: none; background: transparent;")
+        gcal_layout.addWidget(gcal_note)
+
+        # Credentials file row
+        cred_row = QHBoxLayout()
+        cred_row.setSpacing(8)
+        cred_lbl = QLabel("credentials.json:")
+        cred_lbl.setFixedWidth(130)
+        cred_lbl.setStyleSheet("color: #2c3e50; font-size: 13px; border: none; background: transparent;")
+        cred_row.addWidget(cred_lbl)
+        self._gcal_cred_input = QLineEdit()
+        self._gcal_cred_input.setMinimumHeight(36)
+        self._gcal_cred_input.setReadOnly(True)
+        self._gcal_cred_input.setPlaceholderText("בחר קובץ credentials.json...")
+        self._gcal_cred_input.setStyleSheet("""
+            QLineEdit { border: 1px solid #ccc; border-radius: 5px;
+                        padding: 7px 10px; font-size: 13px; background: #fafafa; }
+        """)
+        cred_row.addWidget(self._gcal_cred_input, stretch=1)
+        btn_cred_browse = QPushButton("בחר קובץ")
+        btn_cred_browse.setFixedHeight(36)
+        btn_cred_browse.setMinimumWidth(100)
+        btn_cred_browse.setStyleSheet("""
+            QPushButton { background: #7f8c8d; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #636e72; }
+        """)
+        btn_cred_browse.clicked.connect(self._browse_gcal_credentials)
+        cred_row.addWidget(btn_cred_browse)
+        gcal_layout.addLayout(cred_row)
+
+        # Calendar ID row
+        calid_row = QHBoxLayout()
+        calid_row.setSpacing(8)
+        calid_lbl = QLabel("מזהה לוח שנה:")
+        calid_lbl.setFixedWidth(130)
+        calid_lbl.setStyleSheet("color: #2c3e50; font-size: 13px; border: none; background: transparent;")
+        calid_row.addWidget(calid_lbl)
+        self._gcal_id_input = QLineEdit()
+        self._gcal_id_input.setMinimumHeight(36)
+        self._gcal_id_input.setPlaceholderText("primary  (ברירת מחדל)")
+        self._gcal_id_input.setText(settings_service.get("google_calendar_id", ""))
+        self._gcal_id_input.setStyleSheet("""
+            QLineEdit { border: 1px solid #ccc; border-radius: 5px;
+                        padding: 7px 10px; font-size: 13px; background: #fafafa; }
+        """)
+        calid_row.addWidget(self._gcal_id_input, stretch=1)
+        gcal_layout.addLayout(calid_row)
+
+        # Action buttons row
+        gcal_btn_row = QHBoxLayout()
+        gcal_btn_row.setSpacing(8)
+        gcal_btn_row.addStretch()
+
+        self._btn_gcal_connect = QPushButton("חבר לחשבון Google")
+        self._btn_gcal_connect.setFixedHeight(36)
+        self._btn_gcal_connect.setMinimumWidth(160)
+        self._btn_gcal_connect.setStyleSheet("""
+            QPushButton { background: #4285f4; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #3367d6; }
+        """)
+        self._btn_gcal_connect.clicked.connect(self._gcal_connect)
+        gcal_btn_row.addWidget(self._btn_gcal_connect)
+
+        btn_gcal_sync = QPushButton("סנכרן הכל עכשיו")
+        btn_gcal_sync.setFixedHeight(36)
+        btn_gcal_sync.setMinimumWidth(140)
+        btn_gcal_sync.setStyleSheet("""
+            QPushButton { background: #27ae60; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #219a52; }
+        """)
+        btn_gcal_sync.clicked.connect(self._gcal_sync_all)
+        gcal_btn_row.addWidget(btn_gcal_sync)
+
+        btn_gcal_disconnect = QPushButton("נתק")
+        btn_gcal_disconnect.setFixedHeight(36)
+        btn_gcal_disconnect.setMinimumWidth(80)
+        btn_gcal_disconnect.setStyleSheet("""
+            QPushButton { background: #fdf2f2; color: #e74c3c;
+                          border: 1px solid #f5c6c6; border-radius: 5px;
+                          font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #fce8e8; border-color: #e74c3c; }
+        """)
+        btn_gcal_disconnect.clicked.connect(self._gcal_disconnect)
+        gcal_btn_row.addWidget(btn_gcal_disconnect)
+
+        gcal_layout.addLayout(gcal_btn_row)
+
+        self._gcal_status_label = QLabel("")
+        self._gcal_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
+        gcal_layout.addWidget(self._gcal_status_label)
+
+        self._refresh_gcal_status()
+
         # ── Section: notification rules ────────────────────────
         rules_section = self._section("הגדרות הודעות אוטומטיות")
         layout.addWidget(rules_section)
@@ -644,6 +750,115 @@ class SettingsScreen(QWidget):
         msg.setTextFormat(Qt.TextFormat.RichText)
         msg.setIcon(QMessageBox.Icon.Information)
         msg.exec()
+
+    # ── Google Calendar handlers ───────────────────────────────
+
+    def _browse_gcal_credentials(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "בחר קובץ credentials.json", os.path.expanduser("~"),
+            "JSON files (*.json)"
+        )
+        if path:
+            self._gcal_cred_input.setText(path)
+
+    def _gcal_connect(self):
+        cred_path = self._gcal_cred_input.text().strip()
+        if not cred_path or not os.path.isfile(cred_path):
+            self._gcal_status_label.setStyleSheet(
+                "color: #e74c3c; font-size: 12px; border: none; background: transparent;"
+            )
+            self._gcal_status_label.setText("יש לבחור קובץ credentials.json תחילה.")
+            return
+
+        cal_id = self._gcal_id_input.text().strip()
+        if cal_id:
+            settings_service.set("google_calendar_id", cal_id)
+
+        from services.google_calendar_service import google_calendar_service
+        self._gcal_status_label.setStyleSheet(
+            "color: #2c3e50; font-size: 12px; border: none; background: transparent;"
+        )
+        self._gcal_status_label.setText("פותח חלון הרשאה בדפדפן...")
+        from PyQt6.QtWidgets import QApplication
+        QApplication.processEvents()
+
+        ok, err = google_calendar_service.authorize(cred_path)
+        if ok:
+            self._gcal_status_label.setStyleSheet(
+                "color: #27ae60; font-size: 12px; border: none; background: transparent;"
+            )
+            self._gcal_status_label.setText("החיבור ל-Google Calendar הצליח!")
+        else:
+            self._gcal_status_label.setStyleSheet(
+                "color: #e74c3c; font-size: 12px; border: none; background: transparent;"
+            )
+            self._gcal_status_label.setText(f"שגיאה: {err}")
+        self._refresh_gcal_status()
+
+    def _gcal_sync_all(self):
+        from services.google_calendar_service import google_calendar_service
+        if not google_calendar_service.is_connected():
+            self._gcal_status_label.setStyleSheet(
+                "color: #e74c3c; font-size: 12px; border: none; background: transparent;"
+            )
+            self._gcal_status_label.setText("לא מחובר ל-Google Calendar.")
+            return
+
+        cal_id = self._gcal_id_input.text().strip()
+        if cal_id:
+            settings_service.set("google_calendar_id", cal_id)
+
+        self._gcal_status_label.setStyleSheet(
+            "color: #2c3e50; font-size: 12px; border: none; background: transparent;"
+        )
+        self._gcal_status_label.setText("מסנכרן...")
+        from PyQt6.QtWidgets import QApplication
+        QApplication.processEvents()
+
+        try:
+            synced, errors = google_calendar_service.sync_all()
+            if errors == 0:
+                self._gcal_status_label.setStyleSheet(
+                    "color: #27ae60; font-size: 12px; border: none; background: transparent;"
+                )
+                self._gcal_status_label.setText(f"סונכרנו {synced} תורים בהצלחה.")
+            else:
+                self._gcal_status_label.setStyleSheet(
+                    "color: #e67e22; font-size: 12px; border: none; background: transparent;"
+                )
+                self._gcal_status_label.setText(f"סונכרנו {synced} תורים, {errors} שגיאות.")
+        except Exception as e:
+            self._gcal_status_label.setStyleSheet(
+                "color: #e74c3c; font-size: 12px; border: none; background: transparent;"
+            )
+            self._gcal_status_label.setText(f"שגיאה: {e}")
+
+    def _gcal_disconnect(self):
+        from services.google_calendar_service import google_calendar_service
+        google_calendar_service.disconnect()
+        self._gcal_status_label.setStyleSheet(
+            "color: #27ae60; font-size: 12px; border: none; background: transparent;"
+        )
+        self._gcal_status_label.setText("הנתקת מ-Google Calendar.")
+        self._refresh_gcal_status()
+
+    def _refresh_gcal_status(self):
+        from services.google_calendar_service import google_calendar_service
+        connected = google_calendar_service.is_connected()
+        if connected:
+            self._btn_gcal_connect.setText("מחובר ✓ — חבר מחדש")
+            self._btn_gcal_connect.setStyleSheet("""
+                QPushButton { background: #27ae60; color: white; border: none;
+                              border-radius: 5px; font-size: 13px; padding: 0 12px; }
+                QPushButton:hover { background: #219a52; }
+            """)
+        else:
+            self._btn_gcal_connect.setText("חבר לחשבון Google")
+            self._btn_gcal_connect.setStyleSheet("""
+                QPushButton { background: #4285f4; color: white; border: none;
+                              border-radius: 5px; font-size: 13px; padding: 0 12px; }
+                QPushButton:hover { background: #3367d6; }
+            """)
 
 
 class _RuleCard(QWidget):
