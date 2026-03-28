@@ -11,6 +11,7 @@ from controllers.appointment_controller import appointment_controller
 from controllers.customer_controller import customer_controller
 from database.models import AppointmentStatus
 from ui.screens.add_customer_screen import _DatePickerButton
+from ui.confirm_dialog import confirm
 
 FIELD_STYLE = """
     QLineEdit, QTextEdit, QComboBox {
@@ -399,53 +400,12 @@ class AddAppointmentDialog(QDialog):
                 )
                 return
             else:
-                msg = QMessageBox(self)
-                msg.setWindowTitle("תור בעבר")
-                msg.setText(
-                    f"התאריך שנבחר ({appt_dt.strftime('%d/%m/%Y %H:%M')}) הוא בעבר.\n"
-                    "האם להמשיך בשמירה?"
-                )
-                msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-                msg.setDefaultButton(QMessageBox.StandardButton.No)
-                msg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-                if msg.exec() != QMessageBox.StandardButton.Yes:
+                if not confirm(self, "תור בעבר",
+                               f"התאריך שנבחר ({appt_dt.strftime('%d/%m/%Y %H:%M')}) הוא בעבר.<br>האם להמשיך בשמירה?"):
                     return
         if appt_dt.isoweekday() == 6:   # Saturday
-            dlg = QDialog(self)
-            dlg.setWindowTitle("תור בשבת")
-            dlg.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-            dlg.setMinimumWidth(300)
-            vl = QVBoxLayout(dlg)
-            vl.setContentsMargins(20, 18, 20, 16)
-            vl.setSpacing(14)
-            lbl = QLabel(
-                f"<div dir='rtl' style='font-size:13px;'>"
-                f"התאריך שנבחר ({appt_dt.strftime('%d/%m/%Y')}) חל ב<b>שבת</b>.<br>"
-                f"האם להמשיך בשמירה?"
-                f"</div>"
-            )
-            lbl.setWordWrap(True)
-            vl.addWidget(lbl)
-            br = QHBoxLayout()
-            btn_no = QPushButton("ביטול")
-            btn_no.setFixedHeight(32)
-            btn_no.setStyleSheet(
-                "background:#ecf0f1; color:#555; border:1px solid #ccc;"
-                "border-radius:4px; padding:0 14px;"
-            )
-            btn_yes = QPushButton("אישור")
-            btn_yes.setFixedHeight(32)
-            btn_yes.setStyleSheet(
-                "background:#3498db; color:white; border:none;"
-                "border-radius:4px; padding:0 14px;"
-            )
-            btn_no.clicked.connect(dlg.reject)
-            btn_yes.clicked.connect(dlg.accept)
-            br.addStretch()
-            br.addWidget(btn_no)
-            br.addWidget(btn_yes)
-            vl.addLayout(br)
-            if dlg.exec() != QDialog.DialogCode.Accepted:
+            if not confirm(self, "תור בשבת",
+                           f"התאריך שנבחר ({appt_dt.strftime('%d/%m/%Y')}) חל ב<b>שבת</b>.<br>האם להמשיך בשמירה?"):
                 return
 
         duration = self.duration_combo.currentData()
@@ -469,11 +429,7 @@ class AddAppointmentDialog(QDialog):
             QMessageBox.critical(self, "שגיאה", str(e))
 
     def _delete(self):
-        reply = QMessageBox.question(
-            self, "מחיקת תור", "האם למחוק את התור לצמיתות?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        if confirm(self, "מחיקת תור", "האם למחוק את התור לצמיתות?", danger=True):
             try:
                 appointment_controller.delete(self._appointment_id)
                 self.saved.emit()

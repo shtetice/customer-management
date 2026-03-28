@@ -2,6 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QPushButton, QMessageBox
 )
+from ui.confirm_dialog import confirm
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
@@ -69,13 +70,7 @@ class ActivityLogScreen(QWidget):
             self.table.setItem(row_idx, 2, self._cell(entry.action))
 
     def _delete_all(self):
-        reply = QMessageBox.question(
-            self, "מחיקת יומן",
-            "האם אתה בטוח שברצונך למחוק את כל הרשומות ביומן הפעילות?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        if confirm(self, "מחיקת יומן", "האם אתה בטוח שברצונך למחוק את כל הרשומות ביומן הפעילות?", danger=True):
             delete_all_logs()
             self._refresh()
 

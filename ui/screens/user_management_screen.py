@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QBrush, QColor
+from ui.confirm_dialog import confirm
 
 from database.models import UserRole
 from services.auth_service import auth_service
@@ -192,13 +193,8 @@ class UserManagementScreen(QWidget):
         if not user:
             return
         action = "להשבית" if currently_active else "להפעיל"
-        reply = QMessageBox.question(
-            self, "אישור",
-            f"האם אתה בטוח שברצונך {action} את המשתמש {user.username}?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        if confirm(self, "אישור",
+                   f"האם אתה בטוח שברצונך {action} את המשתמש {user.username}?"):
             auth_service.update_user(user_id, user.full_name or "", user.role, not currently_active)
             self._refresh()
 

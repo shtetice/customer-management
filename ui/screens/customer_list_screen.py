@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtGui import QColor, QFont, QBrush
 from PyQt6.QtCore import Qt, pyqtSignal
+from ui.confirm_dialog import confirm
 
 from database.models import CustomerStatus, Gender
 from controllers.customer_controller import customer_controller
@@ -315,14 +316,8 @@ class CustomerListScreen(QWidget):
         customer = customer_controller.get_by_id(customer_id)
         if not customer:
             return
-        reply = QMessageBox.question(
-            self,
-            "אישור מחיקה",
-            f"האם אתה בטוח שברצונך למחוק את {customer.name} {customer.surname}?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        if confirm(self, "אישור מחיקה",
+                   f"האם אתה בטוח שברצונך למחוק את {customer.name} {customer.surname}?", danger=True):
             try:
                 customer_controller.delete(customer_id)
                 self._refresh()

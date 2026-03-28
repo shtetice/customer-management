@@ -20,6 +20,7 @@ from controllers.treatment_controller import treatment_controller
 from controllers.receipt_controller import receipt_controller
 from services.auth_service import auth_service
 from ui.screens.add_treatment_screen import AddTreatmentDialog
+from ui.confirm_dialog import confirm
 from ui.screens.add_receipt_screen import AddReceiptDialog
 from ui.screens.add_contact_screen import AddContactDialog
 from controllers.contact_controller import contact_controller
@@ -540,12 +541,7 @@ class CustomerDetailScreen(QWidget):
         dlg.exec()
 
     def _delete_treatment(self, treatment_id: int):
-        reply = QMessageBox.question(
-            self, "אישור מחיקה", "האם למחוק טיפול זה? קבלות מקושרות ינותקו.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        if confirm(self, "אישור מחיקה", "האם למחוק טיפול זה? קבלות מקושרות ינותקו.", danger=True):
             try:
                 treatment_controller.delete(treatment_id)
                 self._refresh_treatments()
@@ -734,12 +730,7 @@ class CustomerDetailScreen(QWidget):
         dlg.exec()
 
     def _delete_contact(self, log_id: int):
-        reply = QMessageBox.question(
-            self, "אישור מחיקה", "האם למחוק רשומה זו?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        if confirm(self, "אישור מחיקה", "האם למחוק רשומה זו?", danger=True):
             try:
                 contact_controller.delete(log_id)
                 self._refresh_contacts()
@@ -903,12 +894,7 @@ class CustomerDetailScreen(QWidget):
         self._refresh_photos()
 
     def _delete_photo(self, photo_id: int):
-        reply = QMessageBox.question(
-            self, "מחיקת תמונה", "האם אתה בטוח שברצונך למחוק את התמונה?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply == QMessageBox.StandardButton.Yes:
+        if confirm(self, "מחיקת תמונה", "האם אתה בטוח שברצונך למחוק את התמונה?", danger=True):
             file_controller.delete_photo(photo_id)
             self._refresh_photos()
 
