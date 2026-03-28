@@ -4,7 +4,8 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QStackedWidget, QSizePolicy, QMessageBox,
     QGraphicsOpacityEffect
 )
-from PyQt6.QtCore import Qt
+from datetime import datetime
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QFont, QPixmap, QPainter, QPainterPath
 
 from ui.screens.customer_list_screen import CustomerListScreen
@@ -57,6 +58,35 @@ class MainWindow(QMainWindow):
         self._add_nav_button(sidebar_layout, "logs", "📋  יומן פעילות", "logs.view")
         self._add_nav_button(sidebar_layout, "settings", "⚙️  הגדרות", "settings.view")
         sidebar_layout.addStretch()
+
+        # Clock / date widget
+        clock_widget = QWidget()
+        clock_widget.setStyleSheet("background: transparent; border: none;")
+        clock_layout = QVBoxLayout(clock_widget)
+        clock_layout.setContentsMargins(0, 8, 0, 4)
+        clock_layout.setSpacing(2)
+
+        self._clock_time_label = QLabel()
+        self._clock_time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._clock_time_label.setStyleSheet(
+            "color: #ecf0f1; font-size: 22px; font-weight: bold;"
+            " background: transparent; border: none; letter-spacing: 1px;"
+        )
+        clock_layout.addWidget(self._clock_time_label)
+
+        self._clock_date_label = QLabel()
+        self._clock_date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._clock_date_label.setStyleSheet(
+            "color: #95a5a6; font-size: 11px; background: transparent; border: none;"
+        )
+        clock_layout.addWidget(self._clock_date_label)
+
+        sidebar_layout.addWidget(clock_widget)
+
+        self._clock_timer = QTimer(self)
+        self._clock_timer.timeout.connect(self._update_clock)
+        self._clock_timer.start(1000)
+        self._update_clock()
 
         # Clinic logo at bottom of sidebar (50% opacity)
         logo_path = settings_service.get("clinic_logo_path", "")
@@ -252,6 +282,14 @@ class MainWindow(QMainWindow):
                 self, "שגיאת גיבוי",
                 f"הגיבוי האוטומטי נכשל:\n{e}"
             )
+
+    _HEB_DAYS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון"]
+
+    def _update_clock(self):
+        now = datetime.now()
+        self._clock_time_label.setText(now.strftime("%H:%M:%S"))
+        day_name = f"יום {self._HEB_DAYS[now.weekday()]}"
+        self._clock_date_label.setText(f"{day_name}, {now.strftime('%d.%m.%Y')}")
 
     def _logout(self):
         from services.session_service import session_service
