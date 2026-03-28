@@ -191,3 +191,15 @@ class Appointment(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     customer = relationship("Customer", back_populates="appointments")
+
+
+# ---------- Notification Log ----------
+
+class NotificationLog(Base):
+    """Tracks which notification rules have already been sent per appointment."""
+    __tablename__ = "notification_logs"
+
+    id = Column(Integer, primary_key=True)
+    appointment_id = Column(Integer, ForeignKey("appointments.id"), nullable=False)
+    rule_key = Column(String(100), nullable=False)
+    sent_at = Column(DateTime, default=datetime.now)

@@ -1,9 +1,10 @@
 import os
 import shutil
+import uuid
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QFrame, QFileDialog, QMessageBox, QDialog, QDialogButtonBox,
-    QScrollArea
+    QScrollArea, QComboBox, QSpinBox, QTextEdit
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QPixmap
@@ -398,6 +399,53 @@ class SettingsScreen(QWidget):
         self._wa_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
         wa_layout.addWidget(self._wa_status_label)
 
+        # ── Section: notification rules ────────────────────────
+        rules_section = self._section("הגדרות הודעות אוטומטיות")
+        layout.addWidget(rules_section)
+        rules_layout = rules_section.layout()
+
+        rules_note = QLabel(
+            "הגדר את תוכן ותזמון ההודעות האוטומטיות.\n"
+            "תגיות זמינות: {שם}  {תאריך}  {שעה}  {מטפל}"
+        )
+        rules_note.setStyleSheet("color: #666; font-size: 12px; border: none; background: transparent;")
+        rules_note.setWordWrap(True)
+        rules_layout.addWidget(rules_note)
+
+        self._rules_container = QWidget()
+        self._rules_container.setStyleSheet("QWidget { background: transparent; border: none; }")
+        self._rules_container_layout = QVBoxLayout(self._rules_container)
+        self._rules_container_layout.setContentsMargins(0, 0, 0, 0)
+        self._rules_container_layout.setSpacing(8)
+        rules_layout.addWidget(self._rules_container)
+
+        btn_add_rule = QPushButton("+ הוסף חוק הודעה")
+        btn_add_rule.setFixedHeight(34)
+        btn_add_rule.setStyleSheet("""
+            QPushButton { background: #7f8c8d; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #636e72; }
+        """)
+        btn_add_rule.clicked.connect(self._add_rule)
+        rules_layout.addWidget(btn_add_rule)
+
+        btn_save_rules = QPushButton("שמור הגדרות הודעות")
+        btn_save_rules.setFixedHeight(36)
+        btn_save_rules.setStyleSheet("""
+            QPushButton { background: #3498db; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #2980b9; }
+        """)
+        btn_save_rules.clicked.connect(self._save_rules)
+        rules_layout.addWidget(btn_save_rules)
+
+        self._rules_status_label = QLabel("")
+        self._rules_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
+        rules_layout.addWidget(self._rules_status_label)
+
+        self._rule_cards: list[_RuleCard] = []
+        self._load_rules_ui()
+
         layout.addStretch()
 
     def _save_twilio(self):
@@ -527,6 +575,45 @@ class SettingsScreen(QWidget):
         settings_service.set("log_retention_days", int(val))
         self._logs_status_label.setText("נשמר בהצלחה")
 
+    def _load_rules_ui(self):
+        from services.notification_service import get_rules
+        self._rule_cards = []
+        # Clear existing widgets
+        while self._rules_container_layout.count():
+            item = self._rules_container_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        for rule in get_rules():
+            self._append_rule_card(rule)
+
+    def _append_rule_card(self, rule: dict):
+        card = _RuleCard(rule, on_delete=self._delete_rule)
+        self._rule_cards.append(card)
+        self._rules_container_layout.addWidget(card)
+
+    def _add_rule(self):
+        new_rule = {
+            "key": f"rule_{uuid.uuid4().hex[:8]}",
+            "type": "reminder",
+            "hours": 24,
+            "message": "שלום {שם},\nתזכורת לתורך {תאריך} בשעה {שעה}.",
+        }
+        self._append_rule_card(new_rule)
+
+    def _delete_rule(self, card: "_RuleCard"):
+        self._rule_cards = [c for c in self._rule_cards if c is not card]
+        self._rules_container_layout.removeWidget(card)
+        card.deleteLater()
+
+    def _save_rules(self):
+        from services.settings_service import settings_service
+        rules = [c.get_rule() for c in self._rule_cards]
+        settings_service.set("notification_rules", rules)
+        self._rules_status_label.setStyleSheet(
+            "color: #27ae60; font-size: 12px; border: none; background: transparent;"
+        )
+        self._rules_status_label.setText("הגדרות ההודעות נשמרו בהצלחה.")
+
     def _save_backup_password(self):
         pwd = self._backup_password_input.text()
         if not pwd:
@@ -557,6 +644,130 @@ class SettingsScreen(QWidget):
         msg.setTextFormat(Qt.TextFormat.RichText)
         msg.setIcon(QMessageBox.Icon.Information)
         msg.exec()
+
+
+class _RuleCard(QWidget):
+    """A single notification rule card displayed in the settings rules section."""
+
+    _TYPE_OPTIONS = [
+        ("תזכורת (לפני התור)", "reminder"),
+        ("מעקב (אחרי התור)",  "followup"),
+    ]
+    _TAGS = ["{שם}", "{תאריך}", "{שעה}", "{מטפל}"]
+
+    def __init__(self, rule: dict, on_delete, parent=None):
+        super().__init__(parent)
+        self._key = rule.get("key", f"rule_{uuid.uuid4().hex[:8]}")
+        self._on_delete = on_delete
+        self._build(rule)
+
+    def _build(self, rule: dict):
+        self.setStyleSheet("""
+            _RuleCard, QWidget#ruleCard {
+                background: #f8f9fa;
+                border: 1px solid #dde;
+                border-radius: 6px;
+            }
+        """)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(12, 10, 12, 10)
+        outer.setSpacing(6)
+
+        # Row 1: type selector + hours + delete
+        top = QHBoxLayout()
+        top.setSpacing(8)
+
+        self._type_combo = QComboBox()
+        self._type_combo.setMinimumHeight(32)
+        self._type_combo.setStyleSheet("""
+            QComboBox { border: 1px solid #ccc; border-radius: 4px;
+                        padding: 4px 8px; font-size: 13px; background: white; }
+            QComboBox::drop-down { border: none; width: 20px; }
+        """)
+        for label, value in self._TYPE_OPTIONS:
+            self._type_combo.addItem(label, value)
+        # Set current
+        for i, (_, v) in enumerate(self._TYPE_OPTIONS):
+            if v == rule.get("type", "reminder"):
+                self._type_combo.setCurrentIndex(i)
+                break
+        top.addWidget(self._type_combo)
+
+        hours_lbl = QLabel("שעות:")
+        hours_lbl.setStyleSheet("font-size: 13px; border: none; background: transparent;")
+        top.addWidget(hours_lbl)
+
+        self._hours_spin = QSpinBox()
+        self._hours_spin.setRange(1, 720)
+        self._hours_spin.setValue(int(rule.get("hours", 24)))
+        self._hours_spin.setFixedWidth(70)
+        self._hours_spin.setMinimumHeight(32)
+        self._hours_spin.setStyleSheet("""
+            QSpinBox { border: 1px solid #ccc; border-radius: 4px;
+                       padding: 4px 6px; font-size: 13px; background: white; }
+        """)
+        top.addWidget(self._hours_spin)
+
+        top.addStretch()
+
+        btn_del = QPushButton("מחק")
+        btn_del.setFixedHeight(30)
+        btn_del.setMinimumWidth(60)
+        btn_del.setStyleSheet("""
+            QPushButton { background: #fdf2f2; color: #e74c3c;
+                          border: 1px solid #f5c6c6; border-radius: 4px;
+                          font-size: 12px; padding: 0 8px; }
+            QPushButton:hover { background: #fce8e8; border-color: #e74c3c; }
+        """)
+        btn_del.clicked.connect(lambda: self._on_delete(self))
+        top.addWidget(btn_del)
+
+        outer.addLayout(top)
+
+        # Row 2: message label
+        msg_lbl = QLabel("תוכן ההודעה:")
+        msg_lbl.setStyleSheet("font-size: 12px; color: #555; border: none; background: transparent;")
+        outer.addWidget(msg_lbl)
+
+        # Row 3: message textarea
+        self._msg_edit = QTextEdit()
+        self._msg_edit.setPlainText(rule.get("message", ""))
+        self._msg_edit.setFixedHeight(80)
+        self._msg_edit.setStyleSheet("""
+            QTextEdit { border: 1px solid #ccc; border-radius: 4px;
+                        padding: 6px; font-size: 13px; background: white; }
+        """)
+        outer.addWidget(self._msg_edit)
+
+        # Row 4: tag insertion buttons
+        tags_row = QHBoxLayout()
+        tags_row.setSpacing(4)
+        tag_lbl = QLabel("הכנס תגית:")
+        tag_lbl.setStyleSheet("font-size: 12px; color: #555; border: none; background: transparent;")
+        tags_row.addWidget(tag_lbl)
+        for tag in self._TAGS:
+            btn = QPushButton(tag)
+            btn.setFixedHeight(26)
+            btn.setStyleSheet("""
+                QPushButton { background: #ecf0f1; color: #2c3e50;
+                              border: 1px solid #bdc3c7; border-radius: 4px;
+                              font-size: 12px; padding: 0 8px; }
+                QPushButton:hover { background: #d5dbdb; }
+            """)
+            btn.clicked.connect(
+                lambda checked=False, t=tag: self._msg_edit.insertPlainText(t)
+            )
+            tags_row.addWidget(btn)
+        tags_row.addStretch()
+        outer.addLayout(tags_row)
+
+    def get_rule(self) -> dict:
+        return {
+            "key": self._key,
+            "type": self._type_combo.currentData(),
+            "hours": self._hours_spin.value(),
+            "message": self._msg_edit.toPlainText(),
+        }
 
 
 class _ConfirmPasswordDialog(QDialog):

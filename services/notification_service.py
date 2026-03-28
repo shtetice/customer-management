@@ -13,6 +13,56 @@ from datetime import datetime
 
 from services.settings_service import settings_service
 
+
+DEFAULT_RULES = [
+    {
+        "key": "reminder_24h",
+        "type": "reminder",
+        "hours": 24,
+        "message": (
+            "שלום {שם},\n"
+            "תזכורת לתורך מחר {תאריך} בשעה {שעה}.\n"
+            "נשמח לראותך! לשינוי או ביטול אנא צור/י קשר."
+        ),
+    },
+    {
+        "key": "followup_72h",
+        "type": "followup",
+        "hours": 72,
+        "message": (
+            "שלום {שם},\n"
+            "תודה שביקרת אצלנו! נשמח לשמוע את דעתך ולראותך שוב בקרוב."
+        ),
+    },
+]
+
+
+def get_rules() -> list[dict]:
+    """Return the active notification rules from settings, or the built-in defaults."""
+    rules = settings_service.get("notification_rules", None)
+    if rules is None:
+        return DEFAULT_RULES
+    return rules
+
+
+def render_template(
+    message: str,
+    customer_name: str,
+    appt_dt: datetime,
+    staff_name: str = "",
+) -> str:
+    """Replace template tags in *message* with real values."""
+    date_str = appt_dt.strftime("%d/%m/%Y")
+    time_str = appt_dt.strftime("%H:%M")
+    return (
+        message
+        .replace("{שם}", customer_name)
+        .replace("{תאריך}", date_str)
+        .replace("{שעה}", time_str)
+        .replace("{מטפל}", staff_name or "")
+    )
+
+
 def _twilio_from() -> str:
     number = settings_service.get("twilio_from_number", "")
     if not number:
@@ -57,33 +107,11 @@ class NotificationService:
             raise RuntimeError("Twilio credentials are not configured in settings.")
         return Client(sid, token)
 
-    def send_reminder(self, phone: str, customer_name: str, appointment_dt: datetime) -> bool:
-        """Send a 24-hour appointment reminder. Returns True on success."""
+    def send_message(self, phone: str, body: str) -> bool:
+        """Send *body* to *phone* via WhatsApp. Returns True on success."""
         to = _normalize_phone(phone)
         if not to:
             return False
-        date_str = appointment_dt.strftime("%d/%m/%Y")
-        time_str = appointment_dt.strftime("%H:%M")
-        body = (
-            f"שלום {customer_name},\n"
-            f"תזכורת לתורך מחר {date_str} בשעה {time_str}.\n"
-            f"נשמח לראותך! לשינוי או ביטול אנא צור/י קשר."
-        )
-        try:
-            self._client().messages.create(from_=_twilio_from(), to=to, body=body)
-            return True
-        except Exception:
-            return False
-
-    def send_followup(self, phone: str, customer_name: str) -> bool:
-        """Send a 72-hour post-appointment follow-up. Returns True on success."""
-        to = _normalize_phone(phone)
-        if not to:
-            return False
-        body = (
-            f"שלום {customer_name},\n"
-            f"תודה שביקרת אצלנו! נשמח לשמוע את דעתך ולראותך שוב בקרוב."
-        )
         try:
             self._client().messages.create(from_=_twilio_from(), to=to, body=body)
             return True

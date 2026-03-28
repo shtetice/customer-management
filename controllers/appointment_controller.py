@@ -255,4 +255,45 @@ class AppointmentController:
             session.close()
 
 
+    def get_scheduled_in_window(self, start: datetime, end: datetime) -> list[Appointment]:
+        """Return SCHEDULED appointments whose date falls in (start, end]."""
+        session = get_session()
+        try:
+            appts = (
+                session.query(Appointment)
+                .filter(
+                    Appointment.status == AppointmentStatus.SCHEDULED,
+                    Appointment.date > start,
+                    Appointment.date <= end,
+                )
+                .order_by(Appointment.date)
+                .all()
+            )
+            for a in appts:
+                session.expunge(a)
+            return appts
+        finally:
+            session.close()
+
+    def get_completed_in_window(self, start: datetime, end: datetime) -> list[Appointment]:
+        """Return COMPLETED appointments whose date falls in [start, end)."""
+        session = get_session()
+        try:
+            appts = (
+                session.query(Appointment)
+                .filter(
+                    Appointment.status == AppointmentStatus.COMPLETED,
+                    Appointment.date >= start,
+                    Appointment.date < end,
+                )
+                .order_by(Appointment.date)
+                .all()
+            )
+            for a in appts:
+                session.expunge(a)
+            return appts
+        finally:
+            session.close()
+
+
 appointment_controller = AppointmentController()
