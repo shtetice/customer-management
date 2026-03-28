@@ -271,6 +271,7 @@ class CustomerListScreen(QWidget):
 
             # Details button
             actions_widget = QWidget()
+            actions_widget.setStyleSheet("background: transparent;")
             actions_layout = QHBoxLayout(actions_widget)
             actions_layout.setContentsMargins(8, 4, 8, 4)
             actions_layout.addStretch()
