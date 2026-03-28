@@ -979,7 +979,8 @@ class CalendarScreen(QWidget):
             QListWidget::item:selected { background: #dbeeff; color: #2c3e50; }
             QListWidget::item:hover { background: #f5f9ff; }
         """)
-        self._results_list.setMaximumHeight(220)
+        self._results_list.setMinimumHeight(36)
+        self._results_list.setMaximumHeight(216)
         self._results_list.itemClicked.connect(self._on_search_result_clicked)
         results_vbox.addWidget(self._results_list)
 
@@ -1203,6 +1204,10 @@ class CalendarScreen(QWidget):
             item.setData(Qt.ItemDataRole.UserRole,     appt.id)
             item.setData(Qt.ItemDataRole.UserRole + 1, appt.date.date())
             self._results_list.addItem(item)
+        # Fit list height to results: 36px per row, min 36px (1 row), max 216px (6 rows)
+        row_h = 36
+        h = max(row_h, min(len(appts) * row_h, 6 * row_h))
+        self._results_list.setFixedHeight(h)
         self._search_results_panel.setVisible(True)
 
     def _clear_search(self, clear_input: bool = True):
