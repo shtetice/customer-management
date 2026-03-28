@@ -751,16 +751,16 @@ class _DayHoverPopup(QWidget):
 
         self.adjustSize()
 
-        # Position to the right of the trigger; flip left if near screen edge
+        # Position above the trigger; shift horizontally to stay on screen
         screen = QApplication.primaryScreen().availableGeometry()
-        x = trigger_global.x() + 14
-        y = trigger_global.y()
+        x = trigger_global.x() - self.width() // 2
+        y = trigger_global.y() - self.height() - 8
         if x + self.width() > screen.right() - 8:
-            x = trigger_global.x() - self.width() - 8
-        if y + self.height() > screen.bottom() - 8:
-            y = screen.bottom() - 8 - self.height()
+            x = screen.right() - 8 - self.width()
+        if x < screen.left():
+            x = screen.left()
         if y < screen.top():
-            y = screen.top()
+            y = trigger_global.y() + 8   # flip below if not enough space above
         self.move(x, y)
         self.show()
 
