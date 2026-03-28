@@ -127,8 +127,8 @@ class _TimePickerButton(QPushButton):
         self._popup = popup
         popup.destroyed.connect(self._on_closed)
 
-        self._filter = _OutsideFilterTime(popup, self)
-        QApplication.instance().installEventFilter(self._filter)
+        # Delay filter installation so the opening click isn't caught as an outside click
+        QTimer.singleShot(200, self._install_filter)
 
     def _select(self, item: QListWidgetItem, popup):
         h, m = item.data(Qt.ItemDataRole.UserRole)
@@ -137,6 +137,11 @@ class _TimePickerButton(QPushButton):
         self._update_label()
         self.time_changed.emit(h, m)
         popup.close()
+
+    def _install_filter(self):
+        if self._popup and self._popup.isVisible():
+            self._filter = _OutsideFilterTime(self._popup, self)
+            QApplication.instance().installEventFilter(self._filter)
 
     def _on_closed(self):
         if self._filter:
