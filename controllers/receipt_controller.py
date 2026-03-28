@@ -3,6 +3,14 @@ import shutil
 from datetime import datetime
 from database.db import get_session
 from database.models import Receipt
+from services.activity_service import log_action
+from services.auth_service import auth_service
+
+
+def _cname(customer_id: int) -> str:
+    from controllers.customer_controller import customer_controller
+    c = customer_controller.get_by_id(customer_id)
+    return f"{c.name} {c.surname}" if c else f"לקוח #{customer_id}"
 
 RECEIPTS_UPLOAD_DIR = os.path.join("uploads", "receipts")
 
@@ -61,6 +69,9 @@ class ReceiptController:
                 session.commit()
                 session.refresh(receipt)
             session.expunge(receipt)
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"הוספת קבלה: {_cname(customer_id)} — ₪{amount.strip()}")
             return receipt
         finally:
             session.close()
@@ -92,6 +103,9 @@ class ReceiptController:
             session.commit()
             session.refresh(r)
             session.expunge(r)
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"עדכון קבלה: {_cname(r.customer_id)} — ₪{r.amount}")
             return r
         finally:
             session.close()
@@ -109,8 +123,12 @@ class ReceiptController:
             r = session.query(Receipt).filter_by(id=receipt_id).first()
             if not r:
                 raise ValueError(f"קבלה עם מזהה {receipt_id} לא נמצאה")
+            _log_cid, _log_amount = r.customer_id, r.amount
             session.delete(r)
             session.commit()
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"מחיקת קבלה: {_cname(_log_cid)} — ₪{_log_amount}")
         finally:
             session.close()
 

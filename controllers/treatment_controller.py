@@ -1,6 +1,14 @@
 from datetime import datetime
 from database.db import get_session
 from database.models import Treatment
+from services.activity_service import log_action
+from services.auth_service import auth_service
+
+
+def _cname(customer_id: int) -> str:
+    from controllers.customer_controller import customer_controller
+    c = customer_controller.get_by_id(customer_id)
+    return f"{c.name} {c.surname}" if c else f"לקוח #{customer_id}"
 
 
 class TreatmentController:
@@ -53,6 +61,9 @@ class TreatmentController:
             session.commit()
             session.refresh(treatment)
             session.expunge(treatment)
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"הוספת טיפול: {_cname(customer_id)} — {description.strip()[:60]}")
             return treatment
         finally:
             session.close()
@@ -79,6 +90,9 @@ class TreatmentController:
             session.commit()
             session.refresh(t)
             session.expunge(t)
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"עדכון טיפול: {_cname(t.customer_id)} — {t.description[:60]}")
             return t
         finally:
             session.close()
@@ -89,8 +103,12 @@ class TreatmentController:
             t = session.query(Treatment).filter_by(id=treatment_id).first()
             if not t:
                 raise ValueError(f"טיפול עם מזהה {treatment_id} לא נמצא")
+            _log_cid, _log_desc = t.customer_id, t.description
             session.delete(t)
             session.commit()
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"מחיקת טיפול: {_cname(_log_cid)} — {_log_desc[:60]}")
         finally:
             session.close()
 

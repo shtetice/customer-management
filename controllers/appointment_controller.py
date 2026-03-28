@@ -3,6 +3,25 @@ from datetime import datetime, timedelta
 from sqlalchemy import or_
 from database.db import get_session
 from database.models import Appointment, AppointmentStatus
+from services.activity_service import log_action
+from services.auth_service import auth_service
+
+_STATUS_HEB = {
+    AppointmentStatus.SCHEDULED: "מתוכנן",
+    AppointmentStatus.COMPLETED: "הושלם",
+    AppointmentStatus.CANCELLED: "בוטל",
+    AppointmentStatus.NO_SHOW:   "לא הגיע/ה",
+}
+
+
+def _cname(customer_id: int) -> str:
+    from controllers.customer_controller import customer_controller
+    c = customer_controller.get_by_id(customer_id)
+    return f"{c.name} {c.surname}" if c else f"לקוח #{customer_id}"
+
+
+def _dt(dt: datetime) -> str:
+    return dt.strftime("%d/%m/%Y %H:%M")
 
 
 class AppointmentController:
@@ -54,6 +73,9 @@ class AppointmentController:
             session.commit()
             session.refresh(appt)
             session.expunge(appt)
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"הוספת תור: {_cname(customer_id)} | {_dt(date)}")
             return appt
         finally:
             session.close()
@@ -81,6 +103,9 @@ class AppointmentController:
             session.commit()
             session.refresh(a)
             session.expunge(a)
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"עדכון תור: {_cname(a.customer_id)} | {_dt(a.date)} | {_STATUS_HEB.get(a.status, '')}")
             return a
         finally:
             session.close()
@@ -91,8 +116,12 @@ class AppointmentController:
             a = session.query(Appointment).filter_by(id=appt_id).first()
             if not a:
                 raise ValueError(f"תור עם מזהה {appt_id} לא נמצא")
+            _log_cid, _log_dt = a.customer_id, a.date
             session.delete(a)
             session.commit()
+            if auth_service.current_user:
+                log_action(auth_service.current_user.username,
+                           f"מחיקת תור: {_cname(_log_cid)} | {_dt(_log_dt)}")
         finally:
             session.close()
 
