@@ -242,6 +242,10 @@ class MarketingScreen(QWidget):
     # ── Send logic ────────────────────────────────────────────
 
     def _on_send(self):
+        if not self._name_edit.text().strip():
+            self._set_status("יש להזין שם קמפיין לפני השליחה.", error=True)
+            self._name_edit.setFocus()
+            return
         message = self._msg_edit.toPlainText().strip()
         if not message:
             self._set_status("יש לכתוב הודעה לפני השליחה.", error=True)
@@ -275,7 +279,7 @@ class MarketingScreen(QWidget):
         try:
             camp_id, sent, failed, skipped = campaign_controller.send_campaign(
                 message, self._customers, skip_ids=skip_ids,
-                name=self._name_edit.text().strip() or None,
+                name=self._name_edit.text().strip(),
             )
             parts = [f"נשלח ל־{sent} לקוחות"]
             if failed:
