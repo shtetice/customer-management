@@ -210,33 +210,83 @@ class _CalendarGrid(QWidget):
 
     # ── Card management ───────────────────────────────────────
 
+    @staticmethod
+    def _assign_lanes(appts: list) -> dict:
+        """
+        Return {appt.id: (lane_idx, n_lanes)} for side-by-side layout.
+        Appointments that overlap in time are placed in separate lanes.
+        """
+        if not appts:
+            return {}
+        appts = sorted(appts, key=lambda a: a.date)
+
+        def _end(a):
+            return a.date + timedelta(minutes=max(a.duration_minutes, 15))
+
+        def _overlaps(a, b):
+            return a.date < _end(b) and b.date < _end(a)
+
+        # Greedy lane assignment
+        lane_ends = []
+        lane_map = {}
+        for appt in appts:
+            assigned = None
+            for i, le in enumerate(lane_ends):
+                if le <= appt.date:
+                    lane_ends[i] = _end(appt)
+                    assigned = i
+                    break
+            if assigned is None:
+                assigned = len(lane_ends)
+                lane_ends.append(_end(appt))
+            lane_map[appt.id] = assigned
+
+        # For each appointment, count concurrent lanes in its overlap group
+        result = {}
+        for appt in appts:
+            concurrent = [a for a in appts if _overlaps(appt, a)]
+            n_lanes = max(lane_map[a.id] for a in concurrent) + 1
+            result[appt.id] = (lane_map[appt.id], n_lanes)
+        return result
+
     def _rebuild_cards(self):
         for card in self._cards:
             card.deleteLater()
         self._cards.clear()
 
+        # Group by day for lane assignment
+        from collections import defaultdict
+        by_day = defaultdict(list)
         for appt in self._appointments:
             day_offset = (appt.date.date() - self._week_start).days
             if not (0 <= day_offset < 7):
                 continue
-            slot = (appt.date.hour - HOUR_START) * 2 + appt.date.minute // 30
-            if not (0 <= slot < N_SLOTS):
+            if not (HOUR_START <= appt.date.hour < HOUR_END):
                 continue
+            by_day[day_offset].append(appt)
 
-            n_slots = max(1, appt.duration_minutes // 30)
+        for day_offset, day_appts in by_day.items():
+            lanes = self._assign_lanes(day_appts)
             dw = self._day_w
-            x  = (6 - day_offset) * dw + 2
-            y  = slot * SLOT_H + 1
-            w  = dw - 4
-            h  = n_slots * SLOT_H - 2
+            base_x = (6 - day_offset) * dw
 
-            name = self._customer_names.get(appt.customer_id, "לקוח")
-            card = _AppointmentCard(appt, name, days_w=self._days_w, parent=self)
-            card.setGeometry(x, y, w, h)
-            card.clicked.connect(self.appointment_clicked.emit)
-            card.drag_ended.connect(self._on_drag_ended)
-            card.show()
-            self._cards.append(card)
+            for appt in day_appts:
+                lane_idx, n_lanes = lanes[appt.id]
+                mins_from_start = (appt.date.hour - HOUR_START) * 60 + appt.date.minute
+                y = int(mins_from_start / 30 * SLOT_H) + 1
+                h = max(int(appt.duration_minutes / 30 * SLOT_H) - 2, SLOT_H // 2)
+
+                lane_w = (dw - 4) / n_lanes
+                x = int(base_x + 2 + lane_idx * lane_w)
+                w = int(lane_w) - (1 if n_lanes > 1 else 0)
+
+                name = self._customer_names.get(appt.customer_id, "לקוח")
+                card = _AppointmentCard(appt, name, days_w=self._days_w, parent=self)
+                card.setGeometry(x, y, w, h)
+                card.clicked.connect(self.appointment_clicked.emit)
+                card.drag_ended.connect(self._on_drag_ended)
+                card.show()
+                self._cards.append(card)
 
     def _confirm_move(self, customer_name: str, old_str: str, new_str: str, new_dt: datetime) -> bool:
         dlg = QDialog(self)

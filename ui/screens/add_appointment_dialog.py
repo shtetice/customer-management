@@ -411,6 +411,25 @@ class AddAppointmentDialog(QDialog):
         duration = self.duration_combo.currentData()
         staff = self.staff_input.text().strip()
         notes = self.notes_input.toPlainText().strip()
+
+        # Conflict check: warn if another appointment overlaps with the same staff
+        overlapping = appointment_controller.get_overlapping(
+            appt_dt, duration, exclude_id=self._appointment_id
+        )
+        staff_key = staff.lower()
+        conflicts = [
+            a for a in overlapping
+            if (a.staff_name or "").strip().lower() == staff_key
+        ]
+        if conflicts:
+            time_str = appt_dt.strftime("%d/%m/%Y %H:%M")
+            staff_label = f"המטפל/ת <b>{staff}</b>" if staff else "ללא שם מטפל/ת"
+            if not confirm(
+                self, "חפיפה בלוח תורים",
+                f"קיים תור חופף ב-{time_str} עבור {staff_label}.<br>האם להמשיך בשמירה?"
+            ):
+                return
+
         try:
             if self._appointment_id:
                 status = self.status_combo.currentData()

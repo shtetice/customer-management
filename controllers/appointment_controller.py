@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import datetime, timedelta
 from sqlalchemy import or_
 from database.db import get_session
@@ -218,6 +219,38 @@ class AppointmentController:
             if a:
                 a.followup_sent = True
                 session.commit()
+        finally:
+            session.close()
+
+    def get_overlapping(
+        self,
+        date: datetime,
+        duration_minutes: int,
+        exclude_id: int | None = None,
+    ) -> list[Appointment]:
+        """Return SCHEDULED appointments whose time range overlaps [date, date+duration)."""
+        our_end = date + timedelta(minutes=max(duration_minutes, 1))
+        session = get_session()
+        try:
+            q = (
+                session.query(Appointment)
+                .filter(
+                    Appointment.status == AppointmentStatus.SCHEDULED,
+                    Appointment.date < our_end,
+                )
+            )
+            if exclude_id is not None:
+                q = q.filter(Appointment.id != exclude_id)
+            appts = q.all()
+            # Second filter: their end must be after our start
+            result = []
+            for a in appts:
+                their_end = a.date + timedelta(minutes=max(a.duration_minutes, 1))
+                if their_end > date:
+                    result.append(a)
+            for a in result:
+                session.expunge(a)
+            return result
         finally:
             session.close()
 
