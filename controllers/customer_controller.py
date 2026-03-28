@@ -219,6 +219,10 @@ class CustomerController:
             if customer:
                 customer.profile_photo_path = path
                 session.commit()
+                if auth_service.current_user:
+                    full_name = f"{customer.name} {customer.surname}"
+                    action = f"הוספת תמונה: {full_name}" if path else f"מחיקת תמונה: {full_name}"
+                    log_action(auth_service.current_user.username, action)
         finally:
             session.close()
 
