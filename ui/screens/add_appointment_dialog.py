@@ -108,7 +108,7 @@ class AddAppointmentDialog(QDialog):
         self.time_combo.setMinimumHeight(36)
         self.time_combo.setStyleSheet(FIELD_STYLE)
         for h in range(7, 22):
-            for m in (0, 30):
+            for m in (0, 15, 30, 45):
                 self.time_combo.addItem(f"{h:02d}:{m:02d}", (h, m))
         if self._prefill_dt:
             for i in range(self.time_combo.count()):
