@@ -96,7 +96,7 @@ class CustomerListScreen(QWidget):
             }
         """)
         self.search_input.textChanged.connect(self._refresh)
-        search_row.addWidget(self.search_input, stretch=1)
+        search_row.addWidget(self.search_input, stretch=2)
 
         status_label = QLabel("סטטוס:")
         status_label.setStyleSheet("font-size: 13px;")
@@ -110,6 +110,19 @@ class CustomerListScreen(QWidget):
             self.status_filter.addItem(STATUS_LABELS[s.value], s)
         self.status_filter.currentIndexChanged.connect(self._refresh)
         search_row.addWidget(self.status_filter)
+
+        treat_label = QLabel("טיפול:")
+        treat_label.setStyleSheet("font-size: 13px;")
+        search_row.addWidget(treat_label)
+
+        self.treatment_filter = QComboBox()
+        self.treatment_filter.setMinimumHeight(34)
+        self.treatment_filter.setStyleSheet(self._COMBO_STYLE + "QComboBox { min-width: 140px; }")
+        self.treatment_filter.addItem("כל הטיפולים", None)
+        for t in ["הזרקות", "לייזר", "שיזוף בהתזה", "שיזוף מקלחון"]:
+            self.treatment_filter.addItem(t, t)
+        self.treatment_filter.currentIndexChanged.connect(self._refresh)
+        search_row.addWidget(self.treatment_filter)
 
         layout.addLayout(search_row)
 
@@ -232,6 +245,7 @@ class CustomerListScreen(QWidget):
         birth_year = self.year_filter.currentData()
         city = self.city_filter.currentData()
         gender = self.gender_filter.currentData()
+        treatment = self.treatment_filter.currentData()
 
         if query:
             customers = customer_controller.search(
@@ -243,6 +257,15 @@ class CustomerListScreen(QWidget):
             customers = customer_controller.get_all(
                 status=status, birth_month=birth_month, birth_year=birth_year, city=city, gender=gender
             )
+
+        if treatment:
+            import json
+            def _has_treatment(c):
+                try:
+                    return treatment in json.loads(c.preferred_treatments or "[]")
+                except Exception:
+                    return False
+            customers = [c for c in customers if _has_treatment(c)]
 
         self._current_customers = customers
 
