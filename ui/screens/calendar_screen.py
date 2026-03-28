@@ -467,6 +467,186 @@ class _CalendarGrid(QWidget):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Day-view grid
+# ─────────────────────────────────────────────────────────────────────────────
+
+class _DayGrid(QWidget):
+    slot_clicked        = pyqtSignal(datetime)
+    appointment_clicked = pyqtSignal(int)
+    appointment_dropped = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._day_date:       date           = date.today()
+        self._appointments:   list           = []
+        self._customer_names: dict           = {}
+        self._cards:          list[_AppointmentCard] = []
+        self.setMinimumHeight(N_SLOTS * SLOT_H + 1)
+        self.setMaximumHeight(N_SLOTS * SLOT_H + 1)
+
+    @property
+    def _col_w(self) -> int:
+        return max(200, self.width() - TIME_W)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._rebuild_cards()
+        self.update()
+
+    def set_day(self, day: date, appointments: list, customer_names: dict):
+        self._day_date       = day
+        self._appointments   = appointments
+        self._customer_names = customer_names
+        self._rebuild_cards()
+        self.update()
+
+    def _rebuild_cards(self):
+        for card in self._cards:
+            card.deleteLater()
+        self._cards.clear()
+
+        day_appts = [
+            a for a in self._appointments
+            if a.date.date() == self._day_date and HOUR_START <= a.date.hour < HOUR_END
+        ]
+        lanes   = _CalendarGrid._assign_lanes(day_appts)
+        col_w   = self._col_w
+
+        for appt in day_appts:
+            lane_idx, n_lanes = lanes[appt.id]
+            mins  = (appt.date.hour - HOUR_START) * 60 + appt.date.minute
+            y     = int(mins / 30 * SLOT_H) + 1
+            h     = max(int(appt.duration_minutes / 30 * SLOT_H) - 2, SLOT_H // 2)
+            lw    = (col_w - 4) / n_lanes
+            x     = int(2 + lane_idx * lw)
+            w     = int(lw) - (1 if n_lanes > 1 else 0)
+
+            name = self._customer_names.get(appt.customer_id, "לקוח")
+            card = _AppointmentCard(appt, name, days_w=col_w, parent=self)
+            card.setGeometry(x, y, w, h)
+            card.clicked.connect(self.appointment_clicked.emit)
+            card.drag_ended.connect(self._on_drag_ended)
+            card.show()
+            self._cards.append(card)
+
+    def _on_drag_ended(self, appt_id: int, cx: int, cy: int):
+        if cx < 0 or cx >= self._col_w:
+            self._rebuild_cards()
+            return
+        slot_idx = int(cy // SLOT_H)
+        if not (0 <= slot_idx < N_SLOTS):
+            self._rebuild_cards()
+            return
+
+        appt = next((a for a in self._appointments if a.id == appt_id), None)
+        if not appt:
+            self._rebuild_cards()
+            return
+
+        new_hour   = HOUR_START + slot_idx // 2
+        new_minute = 30 if slot_idx % 2 else 0
+        new_dt = datetime(
+            self._day_date.year, self._day_date.month, self._day_date.day,
+            new_hour, new_minute,
+        )
+        if new_dt == appt.date:
+            self._rebuild_cards()
+            return
+
+        customer_name = self._customer_names.get(appt.customer_id, "לקוח")
+        old_str = appt.date.strftime("%H:%M")
+        new_str = new_dt.strftime("%H:%M")
+
+        from ui.confirm_dialog import confirm
+        if not confirm(
+            self, "אישור הזזת תור",
+            f"להזיז את התור של {customer_name} מ-{old_str} ל-{new_str}?",
+        ):
+            self._rebuild_cards()
+            return
+
+        try:
+            appointment_controller.update(
+                appt_id, new_dt, appt.duration_minutes,
+                appt.staff_name or "", appt.notes or "", appt.status,
+            )
+        except Exception:
+            pass
+        self.appointment_dropped.emit()
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+
+        col_w   = self._col_w
+        total_h = N_SLOTS * SLOT_H
+        total_w = self.width()
+
+        # Slot backgrounds
+        for i in range(N_SLOTS):
+            y = i * SLOT_H
+            p.fillRect(0, y, col_w, SLOT_H,
+                       QColor("#f8f9fb") if i % 2 == 0 else QColor("#ffffff"))
+
+        # Time column background
+        p.fillRect(col_w, 0, TIME_W, total_h, QColor("#f5f6fa"))
+
+        # Horizontal grid lines
+        for i in range(N_SLOTS + 1):
+            y   = i * SLOT_H
+            pen = QPen(QColor("#d0d0d0") if i % 2 == 0 else QColor("#ebebeb"))
+            pen.setWidth(1)
+            p.setPen(pen)
+            p.drawLine(0, y, total_w, y)
+
+        # Column / time-area border
+        p.setPen(QPen(QColor("#b0b4bc")))
+        p.drawLine(col_w, 0, col_w, total_h)
+
+        # Time labels
+        p.setPen(QPen(QColor("#2c3e50")))
+        font = p.font()
+        font.setPixelSize(12)
+        font.setBold(True)
+        p.setFont(font)
+        for i in range(0, N_SLOTS, 2):
+            hour = HOUR_START + i // 2
+            y    = i * SLOT_H
+            p.drawText(
+                col_w + 4, y + 8, TIME_W - 8, SLOT_H,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
+                f"{hour:02d}:00",
+            )
+
+        # Current-time red line (today only)
+        now = datetime.now()
+        if self._day_date == now.date() and HOUR_START <= now.hour < HOUR_END:
+            mins  = (now.hour - HOUR_START) * 60 + now.minute
+            y_now = int(mins * SLOT_H / 30)
+            pen   = QPen(QColor("#e74c3c"))
+            pen.setWidth(2)
+            p.setPen(pen)
+            p.setBrush(QColor("#e74c3c"))
+            p.drawEllipse(-4, y_now - 4, 8, 8)
+            p.drawLine(0, y_now, col_w, y_now)
+
+    def mousePressEvent(self, event):
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        x, y = event.position().x(), event.position().y()
+        if x >= self._col_w:
+            return
+        slot_idx = int(y // SLOT_H)
+        if not (0 <= slot_idx < N_SLOTS):
+            return
+        hour   = HOUR_START + slot_idx // 2
+        minute = 30 if slot_idx % 2 else 0
+        self.slot_clicked.emit(
+            datetime(self._day_date.year, self._day_date.month, self._day_date.day, hour, minute)
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Month view
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -887,6 +1067,7 @@ class CalendarScreen(QWidget):
         self._view_mode   = "week"
         self._week_start  = _week_sunday(date.today())
         self._month_date  = date.today().replace(day=1)
+        self._day_date    = date.today()
         self._search_scope = "all"
         self._search_timer = QTimer()
         self._search_timer.setSingleShot(True)
@@ -911,6 +1092,12 @@ class CalendarScreen(QWidget):
         top.addStretch()
 
         # View toggle
+        self._btn_day = QPushButton("יומי")
+        self._btn_day.setFixedHeight(34)
+        self._btn_day.setStyleSheet(_INACTIVE_TOGGLE)
+        self._btn_day.clicked.connect(lambda: self._set_view("day"))
+        top.addWidget(self._btn_day)
+
         self._btn_week = QPushButton("שבועי")
         self._btn_week.setFixedHeight(34)
         self._btn_week.setStyleSheet(_ACTIVE_TOGGLE)
@@ -1084,14 +1271,46 @@ class CalendarScreen(QWidget):
 
         self._month_view = _MonthView()
         self._month_view.appointment_clicked.connect(self._open_edit)
-        self._month_view.day_clicked.connect(self._jump_to_week)
+        self._month_view.day_clicked.connect(self._jump_to_day)
         month_scroll.setWidget(self._month_view)
+
+        # ── Day view: fixed header + scrollable grid ──────────
+        self._day_widget = QWidget()
+        self._day_widget.setStyleSheet("QWidget { border: none; }")
+        day_vbox = QVBoxLayout(self._day_widget)
+        day_vbox.setContentsMargins(0, 0, 0, 0)
+        day_vbox.setSpacing(0)
+
+        self._day_header_lbl = QLabel()
+        self._day_header_lbl.setFixedHeight(self._HEADER_H)
+        self._day_header_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._day_header_lbl.setStyleSheet(
+            "background: #eef2f7; border-bottom: 1px solid #dde1e7;"
+            " font-size: 14px; font-weight: bold; color: #2c3e50; border-top: none;"
+        )
+        day_vbox.addWidget(self._day_header_lbl)
+
+        day_scroll = QScrollArea()
+        day_scroll.setWidgetResizable(True)
+        day_scroll.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        day_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        day_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        day_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        day_scroll.setStyleSheet("QScrollArea { border: none; background: white; }")
+
+        self._day_grid = _DayGrid()
+        self._day_grid.slot_clicked.connect(self._open_add)
+        self._day_grid.appointment_clicked.connect(self._open_edit)
+        self._day_grid.appointment_dropped.connect(self._load_current)
+        day_scroll.setWidget(self._day_grid)
+        day_vbox.addWidget(day_scroll)
 
         # ── Stack ─────────────────────────────────────────────
         self._stack = QStackedWidget()
         self._stack.setStyleSheet("QStackedWidget { border: none; }")
         self._stack.addWidget(self._week_widget)    # index 0
         self._stack.addWidget(month_scroll)          # index 1
+        self._stack.addWidget(self._day_widget)      # index 2
 
         card_vbox.addWidget(self._stack)
         layout.addWidget(card)
@@ -1100,9 +1319,10 @@ class CalendarScreen(QWidget):
 
     def _set_view(self, mode: str):
         self._view_mode = mode
-        self._btn_week.setStyleSheet(_ACTIVE_TOGGLE if mode == "week" else _INACTIVE_TOGGLE)
+        self._btn_day.setStyleSheet(_ACTIVE_TOGGLE   if mode == "day"   else _INACTIVE_TOGGLE)
+        self._btn_week.setStyleSheet(_ACTIVE_TOGGLE  if mode == "week"  else _INACTIVE_TOGGLE)
         self._btn_month.setStyleSheet(_ACTIVE_TOGGLE if mode == "month" else _INACTIVE_TOGGLE)
-        self._stack.setCurrentIndex(0 if mode == "week" else 1)
+        self._stack.setCurrentIndex({"week": 0, "month": 1, "day": 2}.get(mode, 0))
         self._load_current()
 
     # ── Navigation ────────────────────────────────────────────
@@ -1110,6 +1330,8 @@ class CalendarScreen(QWidget):
     def _prev_period(self):
         if self._view_mode == "week":
             self._week_start -= timedelta(days=7)
+        elif self._view_mode == "day":
+            self._day_date -= timedelta(days=1)
         else:
             first = self._month_date.replace(day=1)
             self._month_date = (first - timedelta(days=1)).replace(day=1)
@@ -1118,6 +1340,8 @@ class CalendarScreen(QWidget):
     def _next_period(self):
         if self._view_mode == "week":
             self._week_start += timedelta(days=7)
+        elif self._view_mode == "day":
+            self._day_date += timedelta(days=1)
         else:
             last = self._month_date.replace(day=28)
             self._month_date = (last + timedelta(days=4)).replace(day=1)
@@ -1126,6 +1350,7 @@ class CalendarScreen(QWidget):
     def _go_today(self):
         self._week_start = _week_sunday(date.today())
         self._month_date = date.today().replace(day=1)
+        self._day_date   = date.today()
         self._load_current()
 
     def _jump_to_week(self, d: date):
@@ -1137,6 +1362,8 @@ class CalendarScreen(QWidget):
     def _load_current(self):
         if self._view_mode == "week":
             self._load_week()
+        elif self._view_mode == "day":
+            self._load_day()
         else:
             self._load_month()
 
@@ -1162,6 +1389,32 @@ class CalendarScreen(QWidget):
         self._period_lbl.setText(
             f"{_HEB_MONTHS[self._month_date.month]} {self._month_date.year}"
         )
+
+    def _load_day(self):
+        start_dt = datetime(self._day_date.year, self._day_date.month, self._day_date.day)
+        end_dt   = start_dt + timedelta(days=1)
+        appointments    = appointment_controller.get_by_date_range(start_dt, end_dt)
+        customer_names  = self._fetch_customer_names(appointments)
+        self._day_grid.set_day(self._day_date, appointments, customer_names)
+
+        day_name = _HEB_DAYS[self._day_date.isoweekday() % 7]
+        date_str = self._day_date.strftime("%d/%m/%Y")
+        is_today = self._day_date == date.today()
+        label_text = f"יום {day_name}  •  {date_str}"
+        if is_today:
+            label_text += "  (היום)"
+        self._day_header_lbl.setText(label_text)
+        self._day_header_lbl.setStyleSheet(
+            ("background: #dbeeff; border-bottom: 1px solid #3498db;"
+             if is_today else
+             "background: #eef2f7; border-bottom: 1px solid #dde1e7;")
+            + " font-size: 14px; font-weight: bold; color: #2c3e50; border-top: none;"
+        )
+        self._period_lbl.setText(label_text)
+
+    def _jump_to_day(self, d: date):
+        self._day_date = d
+        self._set_view("day")
 
     def _fetch_customer_names(self, appointments: list) -> dict[int, str]:
         names: dict[int, str] = {}
