@@ -320,7 +320,12 @@ class _ApprovalDialog(QDialog):
         warn.setStyleSheet("font-size: 13px; color: #2c3e50;")
         layout.addWidget(warn)
 
-        names = QLabel("\n".join(f"• {c.name} {c.surname}" for c in self._repeat))
+        lines = []
+        for c in self._repeat:
+            last_dt = campaign_controller.get_last_campaign_date(c.id)
+            date_str = last_dt.strftime("%d/%m/%Y %H:%M") if last_dt else "?"
+            lines.append(f"• {c.name} {c.surname}  (נשלח ב־{date_str})")
+        names = QLabel("\n".join(lines))
         names.setStyleSheet(
             "background: #fdf2f2; border: 1px solid #f5c6c6; border-radius: 4px;"
             "padding: 8px; font-size: 12px; color: #e74c3c;"

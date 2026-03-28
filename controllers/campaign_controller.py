@@ -26,6 +26,24 @@ class CampaignController:
         finally:
             session.close()
 
+    def get_last_campaign_date(self, customer_id: int) -> datetime | None:
+        """Most recent campaign sent_at for a customer (status=sent)."""
+        session = get_session()
+        try:
+            row = (
+                session.query(Campaign.sent_at)
+                .join(CampaignRecipient, CampaignRecipient.campaign_id == Campaign.id)
+                .filter(
+                    CampaignRecipient.customer_id == customer_id,
+                    CampaignRecipient.status == "sent",
+                )
+                .order_by(Campaign.sent_at.desc())
+                .first()
+            )
+            return row[0] if row else None
+        finally:
+            session.close()
+
     def send_campaign(
         self,
         message: str,
