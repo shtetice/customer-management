@@ -49,6 +49,33 @@ def _migrate():
 
         conn.commit()
 
+    # Seed NotificationLog for appointments already sent via the old flag-based system,
+    # so the new rule-based scheduler doesn't re-send them.
+    _seed_notification_log()
+
+
+def _seed_notification_log():
+    """One-time migration: populate NotificationLog from legacy reminder_sent/followup_sent flags."""
+    session = get_session()
+    try:
+        # Only run if the log is completely empty (fresh migration)
+        if session.query(NotificationLog).count() > 0:
+            return
+        from database.models import Appointment
+        for appt in session.query(Appointment).filter(Appointment.reminder_sent == True).all():
+            session.add(NotificationLog(
+                appointment_id=appt.id,
+                rule_key="reminder_24h",
+            ))
+        for appt in session.query(Appointment).filter(Appointment.followup_sent == True).all():
+            session.add(NotificationLog(
+                appointment_id=appt.id,
+                rule_key="followup_72h",
+            ))
+        session.commit()
+    finally:
+        session.close()
+
 
 def get_session() -> Session:
     return SessionLocal()

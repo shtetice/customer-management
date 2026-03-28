@@ -56,6 +56,7 @@ class NotificationScheduler:
     def __init__(self):
         self._thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._process_lock = threading.Lock()
 
     def start(self):
         """Start the background scheduler thread (idempotent)."""
@@ -83,6 +84,15 @@ class NotificationScheduler:
             self._stop_event.wait(_CHECK_INTERVAL_SECONDS)
 
     def _process(self):
+        if not self._process_lock.acquire(blocking=False):
+            logger.info("Notification scheduler: _process already running, skipping.")
+            return
+        try:
+            self._do_process()
+        finally:
+            self._process_lock.release()
+
+    def _do_process(self):
         if not notification_service.is_configured():
             return
 
