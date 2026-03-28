@@ -381,6 +381,17 @@ class SettingsScreen(QWidget):
         """)
         btn_test_wa.clicked.connect(self._test_twilio)
         btn_row_wa.addWidget(btn_test_wa)
+
+        btn_trigger = QPushButton("שלח תזכורות עכשיו")
+        btn_trigger.setFixedHeight(36)
+        btn_trigger.setMinimumWidth(150)
+        btn_trigger.setStyleSheet("""
+            QPushButton { background: #8e44ad; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #732d91; }
+        """)
+        btn_trigger.clicked.connect(self._trigger_scheduler)
+        btn_row_wa.addWidget(btn_trigger)
         wa_layout.addLayout(btn_row_wa)
 
         self._wa_status_label = QLabel("")
@@ -402,6 +413,16 @@ class SettingsScreen(QWidget):
         settings_service.set_secret("twilio_auth_token", token)
         self._wa_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
         self._wa_status_label.setText("פרטי Twilio נשמרו בהצלחה.")
+
+    def _trigger_scheduler(self):
+        from services.notification_scheduler import notification_scheduler
+        try:
+            notification_scheduler._process()
+            self._wa_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
+            self._wa_status_label.setText("בוצעה בדיקת תזכורות — בדוק את הוואטסאפ.")
+        except Exception as e:
+            self._wa_status_label.setStyleSheet("color: #e74c3c; font-size: 12px; border: none; background: transparent;")
+            self._wa_status_label.setText(f"שגיאה: {e}")
 
     def _test_twilio(self):
         from services.notification_service import notification_service

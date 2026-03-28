@@ -162,7 +162,7 @@ class AppointmentController:
 
     def get_pending_reminders(self) -> list[Appointment]:
         """Scheduled appointments within the next 24h not yet reminded."""
-        now = datetime.utcnow()
+        now = datetime.now()
         session = get_session()
         try:
             appts = (
@@ -183,7 +183,7 @@ class AppointmentController:
 
     def get_pending_followups(self) -> list[Appointment]:
         """Completed appointments in the past 72h not yet followed up."""
-        now = datetime.utcnow()
+        now = datetime.now()
         session = get_session()
         try:
             appts = (
