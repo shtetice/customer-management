@@ -6,3 +6,4 @@ pytest-qt>=4.2.0
 fpdf2>=2.7.0
 python-bidi>=0.4.2
 Pillow>=10.0.0
+twilio>=8.0.0

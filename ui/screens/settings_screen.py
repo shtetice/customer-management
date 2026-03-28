@@ -281,7 +281,130 @@ class SettingsScreen(QWidget):
         self._logs_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
         logs_layout.addWidget(self._logs_status_label)
 
+        # ── Section: WhatsApp / Twilio ─────────────────────────
+        wa_section = self._section("הודעות WhatsApp (Twilio)")
+        layout.addWidget(wa_section)
+        wa_layout = wa_section.layout()
+
+        wa_note = QLabel(
+            "הזן את פרטי חשבון Twilio שלך. ההודעות יישלחו מהמספר whatsapp:+12604002399.\n"
+            "בסביבת Sandbox יש להצטרף לסביבת הבדיקה לפני קבלת הודעות."
+        )
+        wa_note.setStyleSheet("color: #666; font-size: 12px; border: none; background: transparent;")
+        wa_note.setWordWrap(True)
+        wa_layout.addWidget(wa_note)
+
+        field_style = """
+            QLineEdit {
+                border: 1px solid #ccc; border-radius: 5px;
+                padding: 7px 10px; font-size: 13px;
+                background: #fafafa; color: #2c3e50;
+            }
+            QLineEdit:focus { border-color: #3498db; }
+        """
+
+        sid_row = QHBoxLayout()
+        sid_row.setSpacing(8)
+        sid_lbl = QLabel("Account SID:")
+        sid_lbl.setFixedWidth(110)
+        sid_lbl.setStyleSheet("color: #2c3e50; font-size: 13px; border: none; background: transparent;")
+        sid_row.addWidget(sid_lbl)
+        self._sid_input = QLineEdit()
+        self._sid_input.setMinimumHeight(36)
+        self._sid_input.setStyleSheet(field_style)
+        self._sid_input.setPlaceholderText("ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+        self._sid_input.setText(settings_service.get_secret("twilio_account_sid"))
+        sid_row.addWidget(self._sid_input)
+        wa_layout.addLayout(sid_row)
+
+        token_row = QHBoxLayout()
+        token_row.setSpacing(8)
+        token_lbl = QLabel("Auth Token:")
+        token_lbl.setFixedWidth(110)
+        token_lbl.setStyleSheet("color: #2c3e50; font-size: 13px; border: none; background: transparent;")
+        token_row.addWidget(token_lbl)
+        self._token_input = QLineEdit()
+        self._token_input.setMinimumHeight(36)
+        self._token_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self._token_input.setStyleSheet(field_style)
+        self._token_input.setPlaceholderText("Auth Token")
+        self._token_input.setText(settings_service.get_secret("twilio_auth_token"))
+        token_row.addWidget(self._token_input)
+        wa_layout.addLayout(token_row)
+
+        test_row = QHBoxLayout()
+        test_row.setSpacing(8)
+        test_lbl = QLabel("טלפון לבדיקה:")
+        test_lbl.setFixedWidth(110)
+        test_lbl.setStyleSheet("color: #2c3e50; font-size: 13px; border: none; background: transparent;")
+        test_row.addWidget(test_lbl)
+        self._test_phone_input = QLineEdit()
+        self._test_phone_input.setMinimumHeight(36)
+        self._test_phone_input.setStyleSheet(field_style)
+        self._test_phone_input.setPlaceholderText("+972501234567")
+        test_row.addWidget(self._test_phone_input)
+        wa_layout.addLayout(test_row)
+
+        btn_row_wa = QHBoxLayout()
+        btn_row_wa.addStretch()
+        btn_save_wa = QPushButton("שמור פרטי Twilio")
+        btn_save_wa.setFixedHeight(36)
+        btn_save_wa.setMinimumWidth(140)
+        btn_save_wa.setStyleSheet("""
+            QPushButton { background: #3498db; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #2980b9; }
+        """)
+        btn_save_wa.clicked.connect(self._save_twilio)
+        btn_row_wa.addWidget(btn_save_wa)
+        btn_test_wa = QPushButton("שלח הודעת בדיקה")
+        btn_test_wa.setFixedHeight(36)
+        btn_test_wa.setMinimumWidth(140)
+        btn_test_wa.setStyleSheet("""
+            QPushButton { background: #27ae60; color: white; border: none;
+                          border-radius: 5px; font-size: 13px; padding: 0 12px; }
+            QPushButton:hover { background: #219a52; }
+        """)
+        btn_test_wa.clicked.connect(self._test_twilio)
+        btn_row_wa.addWidget(btn_test_wa)
+        wa_layout.addLayout(btn_row_wa)
+
+        self._wa_status_label = QLabel("")
+        self._wa_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
+        wa_layout.addWidget(self._wa_status_label)
+
         layout.addStretch()
+
+    def _save_twilio(self):
+        sid = self._sid_input.text().strip()
+        token = self._token_input.text().strip()
+        if not sid or not token:
+            self._wa_status_label.setStyleSheet("color: #e74c3c; font-size: 12px; border: none; background: transparent;")
+            self._wa_status_label.setText("יש למלא את שני השדות.")
+            return
+        settings_service.set_secret("twilio_account_sid", sid)
+        settings_service.set_secret("twilio_auth_token", token)
+        self._wa_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
+        self._wa_status_label.setText("פרטי Twilio נשמרו בהצלחה.")
+
+    def _test_twilio(self):
+        from services.notification_service import notification_service
+        phone = self._test_phone_input.text().strip()
+        if not phone:
+            self._wa_status_label.setStyleSheet("color: #e74c3c; font-size: 12px; border: none; background: transparent;")
+            self._wa_status_label.setText("יש להזין מספר טלפון לבדיקה.")
+            return
+        if not notification_service.is_configured():
+            self._wa_status_label.setStyleSheet("color: #e74c3c; font-size: 12px; border: none; background: transparent;")
+            self._wa_status_label.setText("יש לשמור פרטי Twilio לפני הבדיקה.")
+            return
+        ok, err = notification_service.send_test(phone)
+        if ok:
+            self._wa_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
+            self._wa_status_label.setText("הודעת בדיקה נשלחה בהצלחה!")
+        else:
+            self._wa_status_label.setStyleSheet("color: #e74c3c; font-size: 12px; border: none; background: transparent;")
+            self._wa_status_label.setText(f"שגיאה: {err}")
 
     def _pick_logo(self):
         path, _ = QFileDialog.getOpenFileName(

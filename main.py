@@ -21,6 +21,8 @@ def main():
     auth_service.ensure_default_manager()
     from services.activity_service import purge_old_logs
     purge_old_logs()
+    from services.notification_scheduler import notification_scheduler
+    notification_scheduler.start()
 
     main_window: MainWindow | None = None
 
