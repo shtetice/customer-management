@@ -953,6 +953,9 @@ class CalendarScreen(QWidget):
         self._search_results_panel.setStyleSheet(
             "QFrame { background: white; border: 1px solid #e0e0e0; border-radius: 8px; }"
         )
+        self._search_results_panel.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         results_vbox = QVBoxLayout(self._search_results_panel)
         results_vbox.setContentsMargins(10, 8, 10, 8)
         results_vbox.setSpacing(6)
@@ -1206,8 +1209,10 @@ class CalendarScreen(QWidget):
             self._results_list.addItem(item)
         # Fit list height to results: 36px per row, min 36px (1 row), max 216px (6 rows)
         row_h = 36
-        h = max(row_h, min(len(appts) * row_h, 6 * row_h))
-        self._results_list.setFixedHeight(h)
+        list_h = max(row_h, min(len(appts) * row_h, 6 * row_h))
+        self._results_list.setFixedHeight(list_h)
+        # Panel = top margin(8) + header(30) + spacing(6) + list + bottom margin(8)
+        self._search_results_panel.setFixedHeight(list_h + 52)
         self._search_results_panel.setVisible(True)
 
     def _clear_search(self, clear_input: bool = True):
