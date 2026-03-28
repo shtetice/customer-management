@@ -87,7 +87,7 @@ def _month_grid_end(month_date: date) -> date:
 
 class _AppointmentCard(QFrame):
     clicked    = pyqtSignal(int)
-    drag_ended = pyqtSignal(int, int, int)   # appt_id, center_x, center_y (parent coords)
+    drag_ended = pyqtSignal(int, int, int)   # appt_id, center_x, top_y (parent coords)
 
     def __init__(self, appt, customer_name: str, days_w: int, parent=None):
         self._days_w = days_w
@@ -161,8 +161,9 @@ class _AppointmentCard(QFrame):
             if self._dragging:
                 self._dragging = False
                 self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-                center = self.pos() + self.rect().center()
-                self.drag_ended.emit(self._appt_id, center.x(), center.y())
+                cx = self.pos().x() + self.rect().center().x()  # center x for column detection
+                cy = self.pos().y()                              # top y for time snapping
+                self.drag_ended.emit(self._appt_id, cx, cy)
             else:
                 self.clicked.emit(self._appt_id)
             self._press_pos = None
@@ -355,7 +356,8 @@ class _CalendarGrid(QWidget):
 
         new_date   = self._week_start + timedelta(days=day_idx)
         new_hour   = HOUR_START + slot_idx // 2
-        new_minute = 30 if slot_idx % 2 else 0
+        sub_slot   = int((cy % SLOT_H) / (SLOT_H / 2))   # 0 = first 15 min, 1 = second 15 min
+        new_minute = (30 if slot_idx % 2 else 0) + sub_slot * 15
         new_dt     = datetime(new_date.year, new_date.month, new_date.day, new_hour, new_minute)
 
         if new_dt == appt.date:
@@ -545,7 +547,8 @@ class _DayGrid(QWidget):
             return
 
         new_hour   = HOUR_START + slot_idx // 2
-        new_minute = 30 if slot_idx % 2 else 0
+        sub_slot   = int((cy % SLOT_H) / (SLOT_H / 2))   # 0 = first 15 min, 1 = second 15 min
+        new_minute = (30 if slot_idx % 2 else 0) + sub_slot * 15
         new_dt = datetime(
             self._day_date.year, self._day_date.month, self._day_date.day,
             new_hour, new_minute,

@@ -419,9 +419,9 @@ class SettingsScreen(QWidget):
         cred_lbl.setFixedWidth(130)
         cred_lbl.setStyleSheet("color: #2c3e50; font-size: 13px; border: none; background: transparent;")
         cred_row.addWidget(cred_lbl)
-        self._gcal_cred_input = QLineEdit()
+        self._gcal_cred_input = _DropLineEdit()
         self._gcal_cred_input.setMinimumHeight(36)
-        self._gcal_cred_input.setReadOnly(True)
+        self._gcal_cred_input.setReadOnly(False)
         self._gcal_cred_input.setPlaceholderText("בחר קובץ credentials.json...")
         self._gcal_cred_input.setStyleSheet("""
             QLineEdit { border: 1px solid #ccc; border-radius: 5px;
@@ -754,9 +754,22 @@ class SettingsScreen(QWidget):
     # ── Google Calendar handlers ───────────────────────────────
 
     def _browse_gcal_credentials(self):
+        import subprocess, sys
+        if sys.platform == "darwin":
+            try:
+                result = subprocess.run(
+                    ["osascript", "-e",
+                     'POSIX path of (choose file with prompt "בחר credentials.json")'],
+                    capture_output=True, text=True, timeout=60,
+                )
+                path = result.stdout.strip()
+                if path:
+                    self._gcal_cred_input.setText(path)
+                return
+            except Exception:
+                pass  # fall through to Qt dialog
         path, _ = QFileDialog.getOpenFileName(
             self, "בחר קובץ credentials.json", os.path.expanduser("~"),
-            "JSON files (*.json)"
         )
         if path:
             self._gcal_cred_input.setText(path)
@@ -861,6 +874,32 @@ class SettingsScreen(QWidget):
             """)
 
 
+class _DropLineEdit(QLineEdit):
+    """QLineEdit that accepts file drops."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        urls = event.mimeData().urls()
+        if urls:
+            self.setText(urls[0].toLocalFile())
+        else:
+            super().dropEvent(event)
+
+
+class _NoWheelSpinBox(QSpinBox):
+    """QSpinBox that ignores mouse wheel so hover-scroll doesn't change the value."""
+    def wheelEvent(self, event):
+        event.ignore()
+
+
 class _RuleCard(QWidget):
     """A single notification rule card displayed in the settings rules section."""
 
@@ -912,7 +951,7 @@ class _RuleCard(QWidget):
         hours_lbl.setStyleSheet("font-size: 13px; border: none; background: transparent;")
         top.addWidget(hours_lbl)
 
-        self._hours_spin = QSpinBox()
+        self._hours_spin = _NoWheelSpinBox()
         self._hours_spin.setRange(1, 720)
         self._hours_spin.setValue(int(rule.get("hours", 24)))
         self._hours_spin.setFixedWidth(70)
