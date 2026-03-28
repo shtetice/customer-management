@@ -259,7 +259,12 @@ class MarketingScreen(QWidget):
             self._set_status("יש להגדיר פרטי Twilio בהגדרות לפני שליחה.", error=True)
             return
 
-        # Check weekly frequency
+        # Step 1: typed-confirmation dialog
+        confirm_dlg = _TypeConfirmDialog(message, self._customers, parent=self)
+        if confirm_dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        # Step 2: Check weekly frequency
         recent_ids = campaign_controller.get_recent_recipient_ids(days=7)
         repeat_customers = [c for c in self._customers if c.id in recent_ids]
 
@@ -378,6 +383,86 @@ class MarketingScreen(QWidget):
         self._update_banner()
         self._refresh_chips()
         self._tabs.setCurrentIndex(0)
+
+
+# ── Typed confirmation dialog ─────────────────────────────────────────────────
+
+class _TypeConfirmDialog(QDialog):
+    """Forces the user to type 'אישור' before a campaign is sent."""
+
+    _REQUIRED = "אישור"
+
+    def __init__(self, message: str, customers: list, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("אישור שליחת קמפיין")
+        self.setMinimumWidth(480)
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self._build(message, customers)
+
+    def _build(self, message: str, customers: list):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(14)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Message preview
+        msg_title = QLabel("ההודעה שתישלח:")
+        msg_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(msg_title)
+
+        msg_box = QTextEdit()
+        msg_box.setReadOnly(True)
+        msg_box.setPlainText(message)
+        msg_box.setFixedHeight(90)
+        msg_box.setStyleSheet(
+            "QTextEdit { border: 1px solid #dde; border-radius: 4px; padding: 6px; font-size: 13px; }"
+        )
+        layout.addWidget(msg_box)
+
+        # Customer list
+        n = len(customers)
+        cust_title = QLabel(f"הלקוחות שיקבלו את ההודעה ({n}):")
+        cust_title.setStyleSheet("font-size: 13px; font-weight: bold; color: #2c3e50;")
+        layout.addWidget(cust_title)
+
+        names_text = "\n".join(f"• {c.name} {c.surname}" for c in customers)
+        names_box = QTextEdit()
+        names_box.setReadOnly(True)
+        names_box.setPlainText(names_text)
+        names_box.setFixedHeight(min(120, 24 + n * 20))
+        names_box.setStyleSheet(
+            "QTextEdit { border: 1px solid #dde; border-radius: 4px; padding: 6px; font-size: 12px; }"
+        )
+        layout.addWidget(names_box)
+
+        # Typed confirmation
+        confirm_lbl = QLabel(f'להאשרת השליחה, הקלד <b>{self._REQUIRED}</b> בשדה למטה:')
+        confirm_lbl.setStyleSheet("font-size: 13px; color: #2c3e50;")
+        layout.addWidget(confirm_lbl)
+
+        self._confirm_input = QLineEdit()
+        self._confirm_input.setPlaceholderText(self._REQUIRED)
+        self._confirm_input.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self._confirm_input.setStyleSheet(
+            "QLineEdit { border: 2px solid #ccc; border-radius: 6px; padding: 6px 10px; font-size: 14px; }"
+        )
+        self._confirm_input.textChanged.connect(self._on_text_changed)
+        layout.addWidget(self._confirm_input)
+
+        btns = QDialogButtonBox()
+        self._btn_ok = btns.addButton("שלח", QDialogButtonBox.ButtonRole.AcceptRole)
+        self._btn_ok.setEnabled(False)
+        btn_cancel = btns.addButton("בטל", QDialogButtonBox.ButtonRole.RejectRole)
+        self._btn_ok.clicked.connect(self.accept)
+        btn_cancel.clicked.connect(self.reject)
+        layout.addWidget(btns)
+
+    def _on_text_changed(self, text: str):
+        ok = text.strip() == self._REQUIRED
+        self._btn_ok.setEnabled(ok)
+        self._confirm_input.setStyleSheet(
+            "QLineEdit { border: 2px solid %s; border-radius: 6px; padding: 6px 10px; font-size: 14px; }"
+            % ("#27ae60" if ok else "#ccc")
+        )
 
 
 # ── Approval dialog ───────────────────────────────────────────────────────────
