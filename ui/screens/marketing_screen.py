@@ -127,6 +127,7 @@ class MarketingScreen(QWidget):
 
         # Send button
         btn_row = QHBoxLayout()
+        btn_row.addStretch()
         self._btn_send = QPushButton("📤  שלח לכל הלקוחות")
         self._btn_send.setFixedHeight(40)
         self._btn_send.setMinimumWidth(200)
