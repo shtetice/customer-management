@@ -2,9 +2,9 @@ from datetime import datetime, date
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTextEdit, QComboBox, QMessageBox, QFrame,
-    QListWidget, QListWidgetItem,
+    QListWidget, QListWidgetItem, QApplication,
 )
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QObject, QEvent, QTimer
 from PyQt6.QtGui import QFont
 
 from controllers.appointment_controller import appointment_controller
@@ -31,6 +31,121 @@ FIELD_STYLE = """
     QComboBox QAbstractItemView::item { padding: 4px 8px; min-height: 22px; }
 """
 LABEL_STYLE = "font-size: 13px; color: #555; margin-bottom: 2px;"
+
+_TIME_SLOTS = [(h, m) for h in range(7, 22) for m in (0, 15, 30, 45)]
+
+
+class _OutsideFilterTime(QObject):
+    """Event filter that closes the time popup when clicking outside it."""
+    def __init__(self, popup, button, parent=None):
+        super().__init__(parent)
+        self._popup = popup
+        self._button = button
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if QApplication.activePopupWidget() is not None:
+                return False
+            pos = event.globalPosition().toPoint()
+            if not self._popup.geometry().contains(pos):
+                self._popup.close()
+                return False
+        return False
+
+
+class _TimePickerButton(QPushButton):
+    time_changed = pyqtSignal(int, int)  # hour, minute
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._hour = 9
+        self._minute = 0
+        self._popup = None
+        self._open = False
+        self._filter = None
+        self._update_label()
+        self.setMinimumHeight(36)
+        self.setStyleSheet("""
+            QPushButton {
+                border: 1px solid #ccc; border-radius: 5px;
+                padding: 7px 10px; font-size: 13px;
+                background: white; color: #2c3e50; text-align: right;
+            }
+            QPushButton:hover { border-color: #3498db; }
+        """)
+        self.clicked.connect(self._toggle)
+
+    def set_time(self, hour: int, minute: int):
+        self._hour = hour
+        self._minute = minute
+        self._update_label()
+
+    def get_time(self) -> tuple:
+        return self._hour, self._minute
+
+    def _update_label(self):
+        self.setText(f"{self._hour:02d}:{self._minute:02d}")
+
+    def _toggle(self):
+        if self._open:
+            return
+        self._open = True
+        QTimer.singleShot(0, self._show_popup)
+
+    def _show_popup(self):
+        popup = QDialog(None)
+        popup.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint)
+        popup.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        vl = QVBoxLayout(popup)
+        vl.setContentsMargins(0, 0, 0, 0)
+
+        lst = QListWidget()
+        lst.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #ccc; border-radius: 5px;
+                font-size: 13px; background: white;
+            }
+            QListWidget::item { padding: 6px 16px; }
+            QListWidget::item:selected { background: #3498db; color: white; }
+        """)
+        for h, m in _TIME_SLOTS:
+            item = QListWidgetItem(f"{h:02d}:{m:02d}")
+            item.setData(Qt.ItemDataRole.UserRole, (h, m))
+            lst.addItem(item)
+            if h == self._hour and m == self._minute:
+                lst.setCurrentItem(item)
+                lst.scrollToItem(item)
+
+        lst.setFixedWidth(120)
+        lst.setFixedHeight(min(len(_TIME_SLOTS) * 32, 280))
+        lst.itemClicked.connect(lambda item: self._select(item, popup))
+        vl.addWidget(lst)
+
+        btn_pos = self.mapToGlobal(self.rect().bottomLeft())
+        popup.move(btn_pos)
+        popup.show()
+        self._popup = popup
+        popup.destroyed.connect(self._on_closed)
+
+        self._filter = _OutsideFilterTime(popup, self)
+        QApplication.instance().installEventFilter(self._filter)
+
+    def _select(self, item: QListWidgetItem, popup):
+        h, m = item.data(Qt.ItemDataRole.UserRole)
+        self._hour = h
+        self._minute = m
+        self._update_label()
+        self.time_changed.emit(h, m)
+        popup.close()
+
+    def _on_closed(self):
+        if self._filter:
+            QApplication.instance().removeEventFilter(self._filter)
+            self._filter = None
+        QTimer.singleShot(200, self._reset_open)
+
+    def _reset_open(self):
+        self._open = False
 
 
 class AddAppointmentDialog(QDialog):
@@ -104,19 +219,10 @@ class AddAppointmentDialog(QDialog):
 
         # ── Time ─────────────────────────────────────────────
         layout.addWidget(self._lbl("שעה *"))
-        self.time_combo = QComboBox()
-        self.time_combo.setMinimumHeight(36)
-        self.time_combo.setStyleSheet(FIELD_STYLE)
-        for h in range(7, 22):
-            for m in (0, 15, 30, 45):
-                self.time_combo.addItem(f"{h:02d}:{m:02d}", (h, m))
+        self.time_picker = _TimePickerButton()
         if self._prefill_dt:
-            for i in range(self.time_combo.count()):
-                h, m = self.time_combo.itemData(i)
-                if h == self._prefill_dt.hour and m == self._prefill_dt.minute:
-                    self.time_combo.setCurrentIndex(i)
-                    break
-        layout.addWidget(self.time_combo)
+            self.time_picker.set_time(self._prefill_dt.hour, self._prefill_dt.minute)
+        layout.addWidget(self.time_picker)
 
         # ── Duration ─────────────────────────────────────────
         layout.addWidget(self._lbl("משך הטיפול"))
@@ -250,11 +356,7 @@ class AddAppointmentDialog(QDialog):
             if c:
                 self._customer_search.setText(f"{c.name} {c.surname}")
             self.date_picker.set_date(a.date.date())
-            for i in range(self.time_combo.count()):
-                h, m = self.time_combo.itemData(i)
-                if h == a.date.hour and m == a.date.minute:
-                    self.time_combo.setCurrentIndex(i)
-                    break
+            self.time_picker.set_time(a.date.hour, a.date.minute)
             for i in range(self.duration_combo.count()):
                 if self.duration_combo.itemData(i) == a.duration_minutes:
                     self.duration_combo.setCurrentIndex(i)
@@ -279,7 +381,7 @@ class AddAppointmentDialog(QDialog):
         if not d:
             self.error_label.setText("יש לבחור תאריך")
             return
-        h, m = self.time_combo.currentData()
+        h, m = self.time_picker.get_time()
         appt_dt = datetime(d.year, d.month, d.day, h, m)
         if appt_dt < datetime.now():
             if not self._appointment_id:
