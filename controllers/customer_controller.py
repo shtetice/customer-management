@@ -66,7 +66,10 @@ class CustomerController:
                 Customer.phone.ilike(qp) |
                 Customer.phone2.ilike(qp) |
                 Customer.phone3.ilike(qp) |
-                Customer.email.ilike(qp)
+                Customer.email.ilike(qp) |
+                Customer.address.ilike(qp) |
+                Customer.city.ilike(qp) |
+                Customer.notes.ilike(qp)
             )
             if birth_month:
                 q = q.filter(extract("month", Customer.date_of_birth) == birth_month)
