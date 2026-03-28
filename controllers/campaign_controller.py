@@ -115,14 +115,6 @@ class CampaignController:
         """Returns {'sent': N, 'failed': N, 'skipped': N}."""
         session = get_session()
         try:
-            rows = (
-                session.query(CampaignRecipient.status,
-                              session.query(CampaignRecipient).filter_by(
-                                  campaign_id=campaign_id,
-                              ).count)
-                .filter_by(campaign_id=campaign_id)
-                .all()
-            )
             counts: dict[str, int] = {"sent": 0, "failed": 0, "skipped": 0}
             for r in session.query(CampaignRecipient).filter_by(campaign_id=campaign_id).all():
                 counts[r.status] = counts.get(r.status, 0) + 1
