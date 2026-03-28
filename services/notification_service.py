@@ -13,7 +13,11 @@ from datetime import datetime
 
 from services.settings_service import settings_service
 
-TWILIO_FROM = "whatsapp:+12604002399"
+def _twilio_from() -> str:
+    number = settings_service.get("twilio_from_number", "")
+    if not number:
+        raise RuntimeError("Twilio from-number is not configured in settings.")
+    return f"whatsapp:{number}" if not number.startswith("whatsapp:") else number
 
 
 def _normalize_phone(phone: str) -> str | None:
@@ -40,7 +44,8 @@ class NotificationService:
     def is_configured(self) -> bool:
         """Return True if Twilio credentials are saved in settings."""
         return bool(
-            settings_service.get_secret("twilio_account_sid")
+            settings_service.get("twilio_from_number")
+            and settings_service.get_secret("twilio_account_sid")
             and settings_service.get_secret("twilio_auth_token")
         )
 
@@ -65,7 +70,7 @@ class NotificationService:
             f"נשמח לראותך! לשינוי או ביטול אנא צור/י קשר."
         )
         try:
-            self._client().messages.create(from_=TWILIO_FROM, to=to, body=body)
+            self._client().messages.create(from_=_twilio_from(), to=to, body=body)
             return True
         except Exception:
             return False
@@ -80,7 +85,7 @@ class NotificationService:
             f"תודה שביקרת אצלנו! נשמח לשמוע את דעתך ולראותך שוב בקרוב."
         )
         try:
-            self._client().messages.create(from_=TWILIO_FROM, to=to, body=body)
+            self._client().messages.create(from_=_twilio_from(), to=to, body=body)
             return True
         except Exception:
             return False

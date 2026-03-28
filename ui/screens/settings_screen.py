@@ -303,6 +303,20 @@ class SettingsScreen(QWidget):
             QLineEdit:focus { border-color: #3498db; }
         """
 
+        from_row = QHBoxLayout()
+        from_row.setSpacing(8)
+        from_lbl = QLabel("מספר שולח:")
+        from_lbl.setFixedWidth(110)
+        from_lbl.setStyleSheet("color: #2c3e50; font-size: 13px; border: none; background: transparent;")
+        from_row.addWidget(from_lbl)
+        self._from_input = QLineEdit()
+        self._from_input.setMinimumHeight(36)
+        self._from_input.setStyleSheet(field_style)
+        self._from_input.setPlaceholderText("+14155238886")
+        self._from_input.setText(settings_service.get("twilio_from_number", ""))
+        from_row.addWidget(self._from_input)
+        wa_layout.addLayout(from_row)
+
         sid_row = QHBoxLayout()
         sid_row.setSpacing(8)
         sid_lbl = QLabel("Account SID:")
@@ -376,12 +390,14 @@ class SettingsScreen(QWidget):
         layout.addStretch()
 
     def _save_twilio(self):
+        from_num = self._from_input.text().strip()
         sid = self._sid_input.text().strip()
         token = self._token_input.text().strip()
-        if not sid or not token:
+        if not from_num or not sid or not token:
             self._wa_status_label.setStyleSheet("color: #e74c3c; font-size: 12px; border: none; background: transparent;")
-            self._wa_status_label.setText("יש למלא את שני השדות.")
+            self._wa_status_label.setText("יש למלא את כל השדות.")
             return
+        settings_service.set("twilio_from_number", from_num)
         settings_service.set_secret("twilio_account_sid", sid)
         settings_service.set_secret("twilio_auth_token", token)
         self._wa_status_label.setStyleSheet("color: #27ae60; font-size: 12px; border: none; background: transparent;")
