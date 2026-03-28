@@ -260,7 +260,16 @@ class MarketingScreen(QWidget):
             return
 
         # Step 1: typed-confirmation dialog
-        confirm_dlg = _TypeConfirmDialog(message, self._customers, parent=self)
+        misspelled = []
+        if _HE_DICT is not None:
+            seen = set()
+            for m in _HEB_RE.finditer(message):
+                word = m.group()
+                if word not in seen and not _HE_DICT.check(word):
+                    misspelled.append(word)
+                    seen.add(word)
+
+        confirm_dlg = _TypeConfirmDialog(message, self._customers, misspelled=misspelled, parent=self)
         if confirm_dlg.exec() != QDialog.DialogCode.Accepted:
             return
 
@@ -392,14 +401,14 @@ class _TypeConfirmDialog(QDialog):
 
     _REQUIRED = "אישור"
 
-    def __init__(self, message: str, customers: list, parent=None):
+    def __init__(self, message: str, customers: list, misspelled: list | None = None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("אישור שליחת קמפיין")
         self.setMinimumWidth(480)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self._build(message, customers)
+        self._build(message, customers, misspelled or [])
 
-    def _build(self, message: str, customers: list):
+    def _build(self, message: str, customers: list, misspelled: list):
         layout = QVBoxLayout(self)
         layout.setSpacing(14)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -417,6 +426,17 @@ class _TypeConfirmDialog(QDialog):
             "QTextEdit { border: 1px solid #dde; border-radius: 4px; padding: 6px; font-size: 13px; }"
         )
         layout.addWidget(msg_box)
+
+        # Spelling warning
+        if misspelled:
+            words_str = "،  ".join(misspelled)
+            spell_lbl = QLabel(f"⚠️  שגיאות כתיב בהודעה: {words_str}")
+            spell_lbl.setWordWrap(True)
+            spell_lbl.setStyleSheet(
+                "background: #fef9e7; border: 1px solid #f9ca24; border-radius: 5px;"
+                "padding: 8px; font-size: 12px; color: #b7950b;"
+            )
+            layout.addWidget(spell_lbl)
 
         # Customer list
         n = len(customers)
