@@ -49,6 +49,7 @@ class CampaignController:
         message: str,
         customers: list,
         skip_ids: set[int] | None = None,
+        name: str | None = None,
     ) -> tuple[int, int, int, int]:
         """
         Send *message* to all customers via WhatsApp.
@@ -61,6 +62,7 @@ class CampaignController:
         session = get_session()
         try:
             campaign = Campaign(
+                name=name or None,
                 message=message,
                 sent_by=auth_service.current_user.username if auth_service.current_user else None,
             )

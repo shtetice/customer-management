@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTextEdit, QFrame, QTabWidget, QTableWidget, QTableWidgetItem,
+    QTextEdit, QLineEdit, QFrame, QTabWidget, QTableWidget, QTableWidgetItem,
     QHeaderView, QDialog, QDialogButtonBox, QScrollArea, QMessageBox,
     QSizePolicy, QMenu,
 )
@@ -125,6 +125,20 @@ class MarketingScreen(QWidget):
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 12, 0, 0)
         layout.setSpacing(12)
+
+        # Campaign name (internal)
+        name_row = QHBoxLayout()
+        name_lbl = QLabel("שם הקמפיין (לשימוש פנימי):")
+        name_lbl.setStyleSheet("font-size: 13px; font-weight: bold; color: #2c3e50;")
+        name_row.addWidget(name_lbl)
+        self._name_edit = QLineEdit()
+        self._name_edit.setPlaceholderText("לדוגמה: מבצע אביב 2026")
+        self._name_edit.setStyleSheet(
+            "QLineEdit { border: 1px solid #ccc; border-radius: 6px; padding: 6px 10px; font-size: 13px; }"
+        )
+        self._name_edit.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        name_row.addWidget(self._name_edit, 1)
+        layout.addLayout(name_row)
 
         # Customer count banner
         self._banner = QLabel()
@@ -260,7 +274,8 @@ class MarketingScreen(QWidget):
 
         try:
             camp_id, sent, failed, skipped = campaign_controller.send_campaign(
-                message, self._customers, skip_ids=skip_ids
+                message, self._customers, skip_ids=skip_ids,
+                name=self._name_edit.text().strip() or None,
             )
             parts = [f"נשלח ל־{sent} לקוחות"]
             if failed:
@@ -269,6 +284,7 @@ class MarketingScreen(QWidget):
                 parts.append(f"{skipped} דולגו")
             self._set_status("  |  ".join(parts), error=bool(failed))
             self._msg_edit.clear()
+            self._name_edit.clear()
             # Refresh history tab
             self._refresh_history()
         except Exception as e:
@@ -297,11 +313,12 @@ class MarketingScreen(QWidget):
         layout.addWidget(btn_refresh, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self._history_table = QTableWidget()
-        self._history_table.setColumnCount(5)
-        self._history_table.setHorizontalHeaderLabels(["תאריך", "שולח", "נשלח", "נכשל", "דולג"])
+        self._history_table.setColumnCount(6)
+        self._history_table.setHorizontalHeaderLabels(["שם קמפיין", "תאריך", "שולח", "נשלח", "נכשל", "דולג"])
         self._history_table.horizontalHeader().setStretchLastSection(False)
         self._history_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        for col in range(1, 5):
+        self._history_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        for col in range(2, 6):
             self._history_table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         self._history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._history_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -324,13 +341,14 @@ class MarketingScreen(QWidget):
         self._history_table.setRowCount(0)
         for i, camp in enumerate(campaigns):
             self._history_table.insertRow(i)
+            self._history_table.setItem(i, 0, self._cell(camp.name or ""))
             dt_str = camp.sent_at.strftime("%d/%m/%Y %H:%M") if camp.sent_at else ""
-            self._history_table.setItem(i, 0, self._cell(dt_str))
-            self._history_table.setItem(i, 1, self._cell(camp.sent_by or ""))
+            self._history_table.setItem(i, 1, self._cell(dt_str))
+            self._history_table.setItem(i, 2, self._cell(camp.sent_by or ""))
             counts = campaign_controller.count_recipients(camp.id)
-            self._history_table.setItem(i, 2, self._cell(str(counts.get("sent", 0)), color="#27ae60"))
-            self._history_table.setItem(i, 3, self._cell(str(counts.get("failed", 0)), color="#e74c3c"))
-            self._history_table.setItem(i, 4, self._cell(str(counts.get("skipped", 0)), color="#e67e22"))
+            self._history_table.setItem(i, 3, self._cell(str(counts.get("sent", 0)), color="#27ae60"))
+            self._history_table.setItem(i, 4, self._cell(str(counts.get("failed", 0)), color="#e74c3c"))
+            self._history_table.setItem(i, 5, self._cell(str(counts.get("skipped", 0)), color="#e67e22"))
 
     @staticmethod
     def _cell(text: str, color: str | None = None) -> QTableWidgetItem:
@@ -420,7 +438,9 @@ class _ApprovalDialog(QDialog):
 class _CampaignDetailDialog(QDialog):
     def __init__(self, campaign, recipients: list, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"פרטי קמפיין — {campaign.sent_at.strftime('%d/%m/%Y %H:%M') if campaign.sent_at else ''}")
+        dt_str = campaign.sent_at.strftime("%d/%m/%Y %H:%M") if campaign.sent_at else ""
+        title = f"{campaign.name} — {dt_str}" if campaign.name else dt_str
+        self.setWindowTitle(f"פרטי קמפיין — {title}")
         self.setMinimumSize(500, 420)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self._build(campaign, recipients)

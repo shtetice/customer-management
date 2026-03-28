@@ -60,6 +60,11 @@ def _migrate():
             if "google_event_id" not in appt_cols:
                 conn.execute(text("ALTER TABLE appointments ADD COLUMN google_event_id VARCHAR(200)"))
 
+        if "campaigns" in tables:
+            camp_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(campaigns)"))]
+            if "name" not in camp_cols:
+                conn.execute(text("ALTER TABLE campaigns ADD COLUMN name VARCHAR(200)"))
+
         conn.commit()
 
     # Seed NotificationLog for appointments already sent via the old flag-based system,

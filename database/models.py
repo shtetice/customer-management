@@ -203,6 +203,7 @@ class Campaign(Base):
     __tablename__ = "campaigns"
 
     id         = Column(Integer, primary_key=True)
+    name       = Column(String(200), nullable=True)   # internal label
     message    = Column(Text, nullable=False)
     sent_at    = Column(DateTime, default=datetime.now)
     sent_by    = Column(String(100), nullable=True)
