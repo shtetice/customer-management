@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QFrame, QSizePolicy, QStackedWidget, QStyle,
     QLineEdit, QListWidget, QListWidgetItem, QDialog, QMessageBox,
+    QApplication, QGraphicsDropShadowEffect,
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QSize, QTimer
 from PyQt6.QtGui import QFont, QPainter, QColor, QPen, QCursor
@@ -647,6 +648,123 @@ class _DayGrid(QWidget):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Day hover popup  (month view — shows all appointments on hover)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class _DayHoverPopup(QWidget):
+    def __init__(self):
+        super().__init__(
+            None,
+            Qt.WindowType.Tool |
+            Qt.WindowType.FramelessWindowHint |
+            Qt.WindowType.WindowStaysOnTopHint,
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.setMinimumWidth(240)
+
+        self._hide_timer = QTimer(self)
+        self._hide_timer.setSingleShot(True)
+        self._hide_timer.setInterval(150)
+        self._hide_timer.timeout.connect(self.hide)
+
+        # Outer wrapper gives transparent margin for shadow
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(6, 6, 6, 6)
+
+        self._frame = QFrame()
+        self._frame.setStyleSheet("""
+            QFrame {
+                background: white;
+                border: 1px solid #c8d0dc;
+                border-radius: 8px;
+            }
+        """)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(16)
+        shadow.setOffset(0, 3)
+        shadow.setColor(QColor(0, 0, 0, 60))
+        self._frame.setGraphicsEffect(shadow)
+
+        self._content = QVBoxLayout(self._frame)
+        self._content.setContentsMargins(12, 10, 12, 10)
+        self._content.setSpacing(5)
+
+        outer.addWidget(self._frame)
+
+    # ── Keep popup alive while mouse moves into it ─────────────
+    def enterEvent(self, event):
+        self._hide_timer.stop()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._hide_timer.start()
+        super().leaveEvent(event)
+
+    def schedule_hide(self):
+        self._hide_timer.start()
+
+    # ── Populate and position ──────────────────────────────────
+    def show_for(self, day: date, appointments: list,
+                 customer_names: dict, trigger_global: QPoint):
+        # Clear previous content
+        while self._content.count():
+            item = self._content.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        self._hide_timer.stop()
+
+        # Header
+        day_name = _HEB_DAYS[day.isoweekday() % 7]
+        title = QLabel(f"יום {day_name}, {day.strftime('%d/%m/%Y')}  —  {len(appointments)} תורים")
+        title.setStyleSheet(
+            "font-size: 12px; font-weight: bold; color: #2c3e50;"
+            " background: transparent; border: none;"
+        )
+        title.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self._content.addWidget(title)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setFixedHeight(1)
+        sep.setStyleSheet("background: #eee; border: none;")
+        self._content.addWidget(sep)
+
+        # One row per appointment
+        for appt in sorted(appointments, key=lambda a: a.date):
+            border_c, bg_c = _STATUS_STYLE.get(appt.status, ("#2980b9", "#dbeeff"))
+            name   = customer_names.get(appt.customer_id, "לקוח")
+            parts  = [appt.date.strftime("%H:%M"), name]
+            if appt.staff_name:
+                parts.append(appt.staff_name)
+            if appt.duration_minutes:
+                parts.append(f"{appt.duration_minutes} דק׳")
+            row = QLabel("  •  ".join(parts))
+            row.setStyleSheet(
+                f"background: {bg_c}; color: {border_c}; border: 1px solid {border_c};"
+                f"border-radius: 4px; font-size: 12px; padding: 4px 8px;"
+            )
+            row.setAlignment(Qt.AlignmentFlag.AlignRight)
+            self._content.addWidget(row)
+
+        self.adjustSize()
+
+        # Position to the right of the trigger; flip left if near screen edge
+        screen = QApplication.primaryScreen().availableGeometry()
+        x = trigger_global.x() + 14
+        y = trigger_global.y()
+        if x + self.width() > screen.right() - 8:
+            x = trigger_global.x() - self.width() - 8
+        if y + self.height() > screen.bottom() - 8:
+            y = screen.bottom() - 8 - self.height()
+        if y < screen.top():
+            y = screen.top()
+        self.move(x, y)
+        self.show()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Month view
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -665,6 +783,7 @@ class _MonthView(QWidget):
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(0)
         self._cells_widget: QWidget | None = None
+        self._hover_popup = _DayHoverPopup()
 
     def set_month(self, month_date: date, appointments: list, customer_names: dict):
         self._month_date     = month_date
@@ -774,8 +893,21 @@ class _MonthView(QWidget):
         overflow = len(appts) - 3
         if overflow > 0:
             more_lbl = QLabel(f"+{overflow} נוספים")
-            more_lbl.setStyleSheet("font-size:10px; color:#888; border:none; background:transparent;")
+            more_lbl.setStyleSheet(
+                "font-size:10px; color:#3498db; border:none; background:transparent;"
+                " text-decoration: underline;"
+            )
+            more_lbl.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
             cell_layout.addWidget(more_lbl)
+
+            # Hover → floating popup showing all appointments
+            _popup   = self._hover_popup
+            _day     = d
+            _all     = appts
+            _names   = self._customer_names
+            more_lbl.enterEvent = lambda e, __p=_popup, __d=_day, __a=_all, __n=_names, __lbl=more_lbl: \
+                __p.show_for(__d, __a, __n, __lbl.mapToGlobal(QPoint(__lbl.width(), 0)))
+            more_lbl.leaveEvent = lambda e, __p=_popup: __p.schedule_hide()
 
         cell_layout.addStretch()
 
